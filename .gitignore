@@ -1,7 +1,6 @@
 /target
 /database
-cli/database
-gui/database
+**/database
 *.pem
 *.cert
 *.key

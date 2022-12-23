@@ -1,7 +1,5 @@
 [workspace]
-
 members = [
     "lib",
-    "cli",
-    "gui"
+    "memory_engine",
 ]

@@ -1,0 +1,19 @@
+[package]
+name = "pontus_onyx_memory_engine"
+version = "0.4.0"
+authors = ["Jimskapt"]
+edition = "2021"
+description = "An engine to use with pontus_onyx crate in order to store data in Random Access Memory (R.A.M.)"
+keywords = ["remotestorage", "database", "pontus_onyx", "pontus_onyx_engine"]
+categories = ["database", "database-implementations"]
+license = "MIT"
+repository = "https://github.com/Jimskapt/pontus_onyx"
+documentation = "https://docs.rs/pontus_onyx/"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+pontus_onyx = { path = "../lib" }
+log = "0.4.17"
+uuid = { version = "1.2.2", features = ["v4"] }
+trait_tests = "0.3.3"
