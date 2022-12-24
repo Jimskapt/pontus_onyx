@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq)]
 pub struct ItemPath(Vec<ItemPathPart>);
 
 impl ItemPath {
@@ -225,7 +225,7 @@ impl ItemPath {
 	}
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq)]
 pub enum ItemPathPart {
 	Folder(String),
 	Document(String),
