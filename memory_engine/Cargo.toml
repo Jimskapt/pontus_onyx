@@ -16,5 +16,6 @@ documentation = "https://docs.rs/pontus_onyx/"
 pontus_onyx = { path = "../lib" }
 log = "0.4.17"
 uuid = { version = "1.2.2", features = ["v4"] }
-trait_tests = "0.3.3"
 time = { version = "0.3.17", features = ["std"] }
+async-trait = "0.1.60"
+tokio = { version = "1", features = ["full"] }

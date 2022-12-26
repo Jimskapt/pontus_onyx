@@ -189,7 +189,10 @@ impl BearerAccess {
 	pub fn check_request(&self, request: &crate::Request) -> Result<(), RequestValidityError> {
 		self.right.method_check(&request.method)?;
 
-		if request.path.starts_with(self.module.clone() + "/") {
+		if request
+			.path
+			.starts_with(&(self.module.clone() + "/").try_into().unwrap())
+		{
 			return Ok(());
 		} else {
 			return Err(RequestValidityError::OutOfModuleScope);

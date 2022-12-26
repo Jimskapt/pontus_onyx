@@ -34,14 +34,13 @@ pub enum EventMethod {
 impl From<&crate::EngineResponse> for EventMethod {
 	fn from(response: &crate::EngineResponse) -> Self {
 		match response {
-			crate::EngineResponse::GetSuccess(_) => panic!(),
+			crate::EngineResponse::GetSuccessDocument(_) => panic!(),
+			crate::EngineResponse::GetSuccessFolder { .. } => panic!(),
 			crate::EngineResponse::CreateSuccess(_, _) => EventMethod::Create,
 			crate::EngineResponse::UpdateSuccess(_, _) => EventMethod::Update,
 			crate::EngineResponse::ContentNotChanged => panic!(),
 			crate::EngineResponse::DeleteSuccess(_) => EventMethod::Delete,
 			crate::EngineResponse::NotFound => panic!(),
-			crate::EngineResponse::NoIfMatch(_) => panic!(),
-			crate::EngineResponse::IfNoneMatch(_) => panic!(),
 			crate::EngineResponse::InternalError(_) => panic!(),
 		}
 	}

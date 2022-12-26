@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ContentType(String);
 
 impl<T: Into<String>> From<T> for ContentType {

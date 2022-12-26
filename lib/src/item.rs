@@ -1,8 +1,10 @@
-#[derive(Debug, PartialEq)]
+#[derive(derivative::Derivative, PartialEq, Clone)]
+#[derivative(Debug)]
 pub enum Item {
 	Document {
 		etag: Option<crate::Etag>,
 		last_modified: Option<crate::LastModified>,
+		#[derivative(Debug = "ignore")]
 		content: Option<crate::Content>,
 		content_type: Option<crate::ContentType>,
 	},
@@ -46,11 +48,26 @@ impl Item {
 
 		return self;
 	}
-}
-
-#[cfg(test)]
-impl Clone for Item {
-	fn clone(&self) -> Self {
-		todo!()
+	pub fn clone_without_content(&self) -> Self {
+		match self {
+			Self::Folder {
+				etag,
+				last_modified,
+			} => Self::Folder {
+				etag: etag.clone(),
+				last_modified: last_modified.clone(),
+			},
+			Self::Document {
+				etag,
+				last_modified,
+				content: _,
+				content_type,
+			} => Self::Document {
+				etag: etag.clone(),
+				last_modified: last_modified.clone(),
+				content: None,
+				content_type: content_type.clone(),
+			},
+		}
 	}
 }

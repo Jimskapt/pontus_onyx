@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Content(Vec<u8>);
 
 impl<T: AsRef<[u8]>> From<T> for Content {

@@ -100,19 +100,17 @@ struct EmptyEngineForTests {}
 static EMPTY_ENGINE_PASS_RESPONSE: &str = "TEST ENGINE : NOT EXPECTED FOR PRODUCTION USE";
 
 #[cfg(test)]
+#[async_trait::async_trait]
 impl crate::Engine for EmptyEngineForTests {
-	fn perform(&mut self, _: &crate::Request) -> crate::EngineResponse {
+	async fn perform(&mut self, _: &crate::Request) -> crate::EngineResponse {
 		crate::EngineResponse::InternalError(String::from(EMPTY_ENGINE_PASS_RESPONSE))
 	}
 
 	fn new_for_tests() -> Self {
 		Self {}
 	}
-	fn root_for_tests(&self) -> crate::Item {
-		crate::Item::Folder {
-			etag: None,
-			last_modified: None,
-		}
+	fn root_for_tests(&self) -> BTreeMap<crate::ItemPath, crate::Item> {
+		BTreeMap::new()
 	}
 }
 
@@ -172,31 +170,34 @@ fn generate_token() {
 		.is_empty());
 }
 
-#[test]
-fn should_not_list_public() {
+#[tokio::test]
+async fn should_not_list_public() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests())
 			.perform(crate::Request::get("public/").unwrap())
+			.await
 			.status,
 		crate::ResponseStatus::Unallowed(AccessError::CanNotListPublic)
 	);
 }
 
-#[test]
-fn should_not_list_public_subfolder() {
+#[tokio::test]
+async fn should_not_list_public_subfolder() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests())
 			.perform(crate::Request::get("public/folder/").unwrap())
+			.await
 			.status,
 		crate::ResponseStatus::Unallowed(AccessError::CanNotListPublic)
 	);
 }
 
-#[test]
-fn should_pass_public_get() {
+#[tokio::test]
+async fn should_pass_public_get() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests())
 			.perform(crate::Request::get("public/document.txt").unwrap())
+			.await
 			.status,
 		crate::ResponseStatus::Performed(crate::EngineResponse::InternalError(String::from(
 			EMPTY_ENGINE_PASS_RESPONSE
@@ -204,11 +205,12 @@ fn should_pass_public_get() {
 	);
 }
 
-#[test]
-fn should_pass_public_get_subfolder() {
+#[tokio::test]
+async fn should_pass_public_get_subfolder() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests())
 			.perform(crate::Request::get("public/folder/document.txt").unwrap())
+			.await
 			.status,
 		crate::ResponseStatus::Performed(crate::EngineResponse::InternalError(String::from(
 			EMPTY_ENGINE_PASS_RESPONSE
@@ -216,18 +218,19 @@ fn should_pass_public_get_subfolder() {
 	);
 }
 
-#[test]
-fn should_not_pass_without_token() {
+#[tokio::test]
+async fn should_not_pass_without_token() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests())
 			.perform(crate::Request::get("folder_a/").unwrap())
+			.await
 			.status,
 		crate::ResponseStatus::Unallowed(AccessError::MissingToken)
 	);
 }
 
-#[test]
-fn should_pass_with_right_token() {
+#[tokio::test]
+async fn should_pass_with_right_token() {
 	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
 	database.create_user("username", &mut String::from("password"));
 	let token = database
@@ -237,6 +240,7 @@ fn should_pass_with_right_token() {
 	assert_eq!(
 		database
 			.perform(crate::Request::get("folder_a/").unwrap().token(token))
+			.await
 			.status,
 		crate::ResponseStatus::Performed(crate::EngineResponse::InternalError(String::from(
 			EMPTY_ENGINE_PASS_RESPONSE
@@ -244,8 +248,8 @@ fn should_pass_with_right_token() {
 	);
 }
 
-#[test]
-fn should_not_pass_with_wrong_token() {
+#[tokio::test]
+async fn should_not_pass_with_wrong_token() {
 	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
 	database.create_user("username", &mut String::from("password"));
 	let token = database
@@ -255,6 +259,7 @@ fn should_not_pass_with_wrong_token() {
 	assert_eq!(
 		database
 			.perform(crate::Request::get("folder_a/").unwrap().token(token))
+			.await
 			.status,
 		crate::ResponseStatus::Unallowed(crate::AccessError::NotValidToken(vec![
 			crate::TokenValidityError::RequestError(crate::RequestValidityError::OutOfModuleScope)
@@ -262,8 +267,8 @@ fn should_not_pass_with_wrong_token() {
 	);
 }
 
-#[test]
-fn should_not_pass_with_token_but_wrong_method() {
+#[tokio::test]
+async fn should_not_pass_with_token_but_wrong_method() {
 	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
 	database.create_user("username", &mut String::from("password"));
 	let token = database
@@ -283,6 +288,7 @@ fn should_not_pass_with_token_but_wrong_method() {
 						content_type: Some("application/json".into())
 					})
 			)
+			.await
 			.status,
 		crate::ResponseStatus::Unallowed(crate::AccessError::NotValidToken(vec![
 			crate::TokenValidityError::RequestError(crate::RequestValidityError::UnallowedMethod)
@@ -291,12 +297,12 @@ fn should_not_pass_with_token_but_wrong_method() {
 }
 
 impl<E: crate::Engine> Database<E> {
-	pub fn perform(&mut self, request: impl Into<crate::Request>) -> crate::Response {
+	pub async fn perform(&mut self, request: impl Into<crate::Request>) -> crate::Response {
 		let request = request.into();
 
 		let status = match self.is_allowed(&request) {
 			Ok(()) => {
-				let engine_response = self.engine.perform(&request);
+				let engine_response = self.engine.perform(&request).await;
 
 				if engine_response.has_muted_database() {
 					for listener in &mut self.listeners {
@@ -312,7 +318,10 @@ impl<E: crate::Engine> Database<E> {
 		crate::Response { request, status }
 	}
 	fn is_allowed(&self, request: &crate::Request) -> Result<(), AccessError> {
-		if request.path.starts_with("/public/") {
+		if request
+			.path
+			.starts_with(&crate::ItemPath::try_from("/public/").unwrap())
+		{
 			if request.path.target_is_document() {
 				return Ok(());
 			} else {

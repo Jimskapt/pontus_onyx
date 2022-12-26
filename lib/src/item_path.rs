@@ -2,38 +2,26 @@
 pub struct ItemPath(Vec<ItemPathPart>);
 
 impl ItemPath {
-	pub fn starts_with<P: TryInto<ItemPath, Error = ItemPathConvertError> + std::fmt::Debug>(
-		&self,
-		start: P,
-	) -> bool {
-		let start_debug = format!("{start:?}");
-
-		match start.try_into() {
-			Ok(ItemPath(start)) => self
-				.0
-				.iter()
-				.take(start.len())
-				.collect::<Vec<&ItemPathPart>>()
-				.eq(&start.iter().collect::<Vec<&ItemPathPart>>()),
-			Err(err) => {
-				log::warn!("incorrect start value `{start_debug}` : {err:?}");
-				false
-			}
+	pub fn starts_with(&self, start: &Self) -> bool {
+		self.0
+			.iter()
+			.take(start.0.len())
+			.collect::<Vec<&ItemPathPart>>()
+			.eq(&start.0.iter().collect::<Vec<&ItemPathPart>>())
+	}
+	pub fn is_folder(&self) -> bool {
+		if !self.0.is_empty() {
+			matches!(self.0.last(), Some(ItemPathPart::Folder(_)))
+		} else {
+			true
 		}
 	}
-}
-
-#[test]
-fn start_with_incorrect_value() {
-	assert_eq!(
-		ItemPath(vec![
-			ItemPathPart::Folder(String::from("path")),
-			ItemPathPart::Folder(String::from("to")),
-			ItemPathPart::Folder(String::from("f\0lder")),
-		])
-		.starts_with("path/to/f\0lder"),
-		false
-	);
+	pub fn is_document(&self) -> bool {
+		matches!(self.0.last(), Some(ItemPathPart::Document(_)))
+	}
+	pub fn is_direct_child(&self, parent: &Self) -> bool {
+		self.starts_with(parent) && self.0.len() == parent.0.len() + 1
+	}
 }
 
 #[test]
@@ -45,7 +33,9 @@ fn start_with_correct_folder_value() {
 			ItemPathPart::Folder(String::from("to")),
 			ItemPathPart::Document(String::from("document")),
 		])
-		.starts_with("public/"),
+		.starts_with(&ItemPath(vec![ItemPathPart::Folder(String::from(
+			"public"
+		))])),
 		true
 	);
 }
@@ -59,7 +49,12 @@ fn start_with_correct_full_folder_value() {
 			ItemPathPart::Folder(String::from("to")),
 			ItemPathPart::Document(String::from("document")),
 		])
-		.starts_with("public/path/to/document"),
+		.starts_with(&ItemPath(vec![
+			ItemPathPart::Folder(String::from("public")),
+			ItemPathPart::Folder(String::from("path")),
+			ItemPathPart::Folder(String::from("to")),
+			ItemPathPart::Document(String::from("document")),
+		])),
 		true
 	);
 }
@@ -73,9 +68,66 @@ fn start_with_correct_document_value() {
 			ItemPathPart::Folder(String::from("to")),
 			ItemPathPart::Document(String::from("document")),
 		])
-		.starts_with("public"),
-		false
+		.starts_with(&ItemPath(vec![
+			ItemPathPart::Folder(String::from("public")),
+			ItemPathPart::Folder(String::from("path")),
+			ItemPathPart::Folder(String::from("to")),
+			ItemPathPart::Document(String::from("document")),
+		])),
+		true
 	);
+}
+
+#[test]
+fn is_direct_child() {
+	assert_eq!(
+		ItemPath(vec![
+			ItemPathPart::Folder(String::from("public")),
+			ItemPathPart::Folder(String::from("path")),
+			ItemPathPart::Folder(String::from("to")),
+			ItemPathPart::Document(String::from("document")),
+		])
+		.is_direct_child(&ItemPath(vec![
+			ItemPathPart::Folder(String::from("public")),
+			ItemPathPart::Folder(String::from("path")),
+			ItemPathPart::Folder(String::from("to")),
+		])),
+		true
+	)
+}
+
+#[test]
+fn is_not_direct_child() {
+	assert_eq!(
+		ItemPath(vec![
+			ItemPathPart::Folder(String::from("public")),
+			ItemPathPart::Folder(String::from("path")),
+			ItemPathPart::Folder(String::from("to")),
+			ItemPathPart::Document(String::from("document")),
+		])
+		.is_direct_child(&ItemPath(vec![
+			ItemPathPart::Folder(String::from("public")),
+			ItemPathPart::Folder(String::from("path")),
+		])),
+		false
+	)
+}
+
+#[test]
+fn is_not_direct_child_no_common() {
+	assert_eq!(
+		ItemPath(vec![
+			ItemPathPart::Folder(String::from("public")),
+			ItemPathPart::Folder(String::from("path")),
+			ItemPathPart::Folder(String::from("to")),
+			ItemPathPart::Document(String::from("document")),
+		])
+		.is_direct_child(&ItemPath(vec![
+			ItemPathPart::Folder(String::from("no")),
+			ItemPathPart::Folder(String::from("common")),
+		])),
+		false
+	)
 }
 
 impl TryFrom<&str> for ItemPath {
@@ -139,43 +191,47 @@ impl TryFrom<&String> for ItemPath {
 #[test]
 fn try_from_prefix() {
 	assert_eq!(
-		ItemPath::try_from("/path/to/document").unwrap(),
-		ItemPath::try_from("/path/to/document").unwrap()
+		ItemPath::try_from("/path/to/document"),
+		Ok(ItemPath(vec![
+			ItemPathPart::Folder(String::from("path")),
+			ItemPathPart::Folder(String::from("to")),
+			ItemPathPart::Document(String::from("document")),
+		]))
 	);
 }
 
 #[test]
 fn try_from_document() {
 	assert_eq!(
-		ItemPath::try_from("/path/to/document").unwrap(),
-		ItemPath(vec![
+		ItemPath::try_from("/path/to/document"),
+		Ok(ItemPath(vec![
 			ItemPathPart::Folder(String::from("path")),
 			ItemPathPart::Folder(String::from("to")),
 			ItemPathPart::Document(String::from("document")),
-		]),
+		])),
 	);
 }
 
 #[test]
 fn try_from_folder() {
 	assert_eq!(
-		ItemPath::try_from("/path/to/folder/").unwrap(),
-		ItemPath(vec![
+		ItemPath::try_from("/path/to/folder/"),
+		Ok(ItemPath(vec![
 			ItemPathPart::Folder(String::from("path")),
 			ItemPathPart::Folder(String::from("to")),
 			ItemPathPart::Folder(String::from("folder")),
-		]),
+		])),
 	);
 }
 
 #[test]
 fn try_from_empty() {
-	assert_eq!(ItemPath::try_from("").unwrap(), ItemPath(vec![]),);
+	assert_eq!(ItemPath::try_from(""), Ok(ItemPath(vec![])));
 }
 
 #[test]
 fn try_from_space_empty() {
-	assert_eq!(ItemPath::try_from(" ").unwrap(), ItemPath(vec![]),);
+	assert_eq!(ItemPath::try_from(" "), Ok(ItemPath(vec![])));
 }
 
 #[test]
