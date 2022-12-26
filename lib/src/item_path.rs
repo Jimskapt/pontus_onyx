@@ -187,6 +187,11 @@ impl TryFrom<&String> for ItemPath {
 		Self::try_from(input.as_str())
 	}
 }
+impl AsRef<ItemPath> for ItemPath {
+	fn as_ref(&self) -> &Self {
+		&self
+	}
+}
 
 #[test]
 fn try_from_prefix() {

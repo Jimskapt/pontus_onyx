@@ -174,7 +174,7 @@ fn generate_token() {
 async fn should_not_list_public() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests())
-			.perform(crate::Request::get("public/").unwrap())
+			.perform(crate::Request::get(crate::ItemPath::try_from("public/").unwrap()))
 			.await
 			.status,
 		crate::ResponseStatus::Unallowed(AccessError::CanNotListPublic)
@@ -185,7 +185,7 @@ async fn should_not_list_public() {
 async fn should_not_list_public_subfolder() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests())
-			.perform(crate::Request::get("public/folder/").unwrap())
+			.perform(crate::Request::get(crate::ItemPath::try_from("public/folder/").unwrap()))
 			.await
 			.status,
 		crate::ResponseStatus::Unallowed(AccessError::CanNotListPublic)
@@ -196,7 +196,7 @@ async fn should_not_list_public_subfolder() {
 async fn should_pass_public_get() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests())
-			.perform(crate::Request::get("public/document.txt").unwrap())
+			.perform(crate::Request::get(crate::ItemPath::try_from("public/document.txt").unwrap()))
 			.await
 			.status,
 		crate::ResponseStatus::Performed(crate::EngineResponse::InternalError(String::from(
@@ -209,7 +209,7 @@ async fn should_pass_public_get() {
 async fn should_pass_public_get_subfolder() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests())
-			.perform(crate::Request::get("public/folder/document.txt").unwrap())
+			.perform(crate::Request::get(crate::ItemPath::try_from("public/folder/document.txt").unwrap()))
 			.await
 			.status,
 		crate::ResponseStatus::Performed(crate::EngineResponse::InternalError(String::from(
@@ -222,7 +222,7 @@ async fn should_pass_public_get_subfolder() {
 async fn should_not_pass_without_token() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests())
-			.perform(crate::Request::get("folder_a/").unwrap())
+			.perform(crate::Request::get(crate::ItemPath::try_from("folder_a/").unwrap()))
 			.await
 			.status,
 		crate::ResponseStatus::Unallowed(AccessError::MissingToken)
@@ -239,7 +239,7 @@ async fn should_pass_with_right_token() {
 
 	assert_eq!(
 		database
-			.perform(crate::Request::get("folder_a/").unwrap().token(token))
+			.perform(crate::Request::get(crate::ItemPath::try_from("folder_a/").unwrap()).token(token))
 			.await
 			.status,
 		crate::ResponseStatus::Performed(crate::EngineResponse::InternalError(String::from(
@@ -258,7 +258,7 @@ async fn should_not_pass_with_wrong_token() {
 
 	assert_eq!(
 		database
-			.perform(crate::Request::get("folder_a/").unwrap().token(token))
+			.perform(crate::Request::get(crate::ItemPath::try_from("folder_a/").unwrap()).token(token))
 			.await
 			.status,
 		crate::ResponseStatus::Unallowed(crate::AccessError::NotValidToken(vec![
@@ -278,8 +278,7 @@ async fn should_not_pass_with_token_but_wrong_method() {
 	assert_eq!(
 		database
 			.perform(
-				crate::Request::put("folder_a/document.json")
-					.unwrap()
+				crate::Request::put(crate::ItemPath::try_from("folder_a/document.json").unwrap())
 					.token(token)
 					.item(crate::Item::Document {
 						etag: None,
