@@ -5,8 +5,10 @@ pub struct Response {
 
 #[derive(Debug, PartialEq)]
 pub enum ResponseStatus {
+	Performed(crate::EngineResponse),
 	Unallowed(crate::AccessError),
 	NoIfMatch(crate::Etag),
 	IfNoneMatch(crate::Etag),
-	Performed(crate::EngineResponse),
+	ContentNotChanged,
+	NotFound,
 }

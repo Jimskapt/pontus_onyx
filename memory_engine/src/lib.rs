@@ -97,6 +97,16 @@ impl pontus_onyx::Engine for MemoryEngine {
 		);
 
 		root.insert(
+			"folder_b/other_document.txt".try_into().unwrap(),
+			pontus_onyx::Item::Document {
+				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
+				last_modified: Some(time::OffsetDateTime::now_utc().into()),
+				content: Some(b"My Other Document Content Here (folder b)".into()),
+				content_type: Some("text/html".into()),
+			},
+		);
+
+		root.insert(
 			"folder_a/".try_into().unwrap(),
 			pontus_onyx::Item::Folder {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),

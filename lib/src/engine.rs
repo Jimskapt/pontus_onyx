@@ -17,8 +17,7 @@ pub enum EngineResponse {
 	},
 	CreateSuccess(crate::Etag, crate::LastModified),
 	UpdateSuccess(crate::Etag, crate::LastModified),
-	ContentNotChanged,
-	DeleteSuccess(crate::Etag),
+	DeleteSuccess,
 	NotFound,
 	InternalError(String),
 }
@@ -29,8 +28,7 @@ impl EngineResponse {
 			Self::GetSuccessFolder { .. } => false,
 			Self::CreateSuccess(_, _) => true,
 			Self::UpdateSuccess(_, _) => true,
-			Self::ContentNotChanged => false,
-			Self::DeleteSuccess(_) => true,
+			Self::DeleteSuccess => true,
 			Self::NotFound => false,
 			Self::InternalError(_) => false,
 		}
@@ -49,8 +47,7 @@ impl EngineResponse {
 			} => etag.clone(),
 			Self::CreateSuccess(etag, _) => Some(etag.clone()),
 			Self::UpdateSuccess(etag, _) => Some(etag.clone()),
-			Self::ContentNotChanged => None,
-			Self::DeleteSuccess(_) => None,
+			Self::DeleteSuccess => None,
 			Self::NotFound => None,
 			Self::InternalError(_) => None,
 		}
@@ -73,8 +70,7 @@ impl EngineResponse {
 			} => last_modified.clone(),
 			Self::CreateSuccess(_, last_modified) => Some(last_modified.clone()),
 			Self::UpdateSuccess(_, last_modified) => Some(last_modified.clone()),
-			Self::ContentNotChanged => None,
-			Self::DeleteSuccess(_) => None,
+			Self::DeleteSuccess => None,
 			Self::NotFound => None,
 			Self::InternalError(_) => None,
 		}

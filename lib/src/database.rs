@@ -309,6 +309,36 @@ async fn should_not_pass_with_token_but_wrong_method() {
 	);
 }
 
+#[tokio::test]
+async fn get_no_if_match() {
+	todo!()
+}
+
+#[tokio::test]
+async fn get_if_match() {
+	todo!()
+}
+
+#[tokio::test]
+async fn get_if_none_match() {
+	todo!()
+}
+
+#[tokio::test]
+async fn get_no_if_none_match() {
+	todo!()
+}
+
+#[tokio::test]
+async fn put_content_not_changed() {
+	todo!()
+}
+
+#[tokio::test]
+async fn get_not_found() {
+	todo!()
+}
+
 impl<E: crate::Engine> Database<E> {
 	pub async fn perform(&mut self, request: impl Into<crate::Request>) -> crate::Response {
 		let request = request.into();
@@ -319,7 +349,9 @@ impl<E: crate::Engine> Database<E> {
 
 				if engine_response.has_muted_database() {
 					for listener in &mut self.listeners {
-						listener.receive(crate::Event::build_from(&request, &engine_response));
+						if let Ok(event) = crate::Event::build_from(&request, &engine_response) {
+							listener.receive(event);
+						}
 					}
 				}
 
@@ -369,7 +401,7 @@ impl<E: crate::Engine> Database<E> {
 }
 
 impl<E: crate::Engine> crate::Listener for Database<E> {
-	fn receive(&mut self, event: crate::Event) -> crate::Response {
+	fn receive(&mut self, _event: crate::Event) -> crate::Response {
 		todo!()
 	}
 }
