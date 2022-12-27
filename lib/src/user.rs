@@ -115,15 +115,21 @@ fn multiple_modules() {
 	};
 
 	assert_eq!(
-		token.check_request(&crate::Request::get(crate::ItemPath::try_from("folder_a/").unwrap())),
+		token.check_request(&crate::Request::get(
+			crate::ItemPath::try_from("folder_a/").unwrap()
+		)),
 		Ok(())
 	);
 	assert_eq!(
-		token.check_request(&crate::Request::get(crate::ItemPath::try_from("folder_b/").unwrap())),
+		token.check_request(&crate::Request::get(
+			crate::ItemPath::try_from("folder_b/").unwrap()
+		)),
 		Ok(())
 	);
 	assert_eq!(
-		token.check_request(&crate::Request::get(crate::ItemPath::try_from("folder_c/").unwrap())),
+		token.check_request(&crate::Request::get(
+			crate::ItemPath::try_from("folder_c/").unwrap()
+		)),
 		Err(vec![
 			crate::RequestValidityError::OutOfModuleScope,
 			crate::RequestValidityError::OutOfModuleScope,
@@ -215,22 +221,30 @@ fn check_request() {
 	};
 
 	assert_eq!(
-		bearer.check_request(&crate::Request::get(crate::ItemPath::try_from("folder_a/").unwrap())),
+		bearer.check_request(&crate::Request::get(
+			crate::ItemPath::try_from("folder_a/").unwrap()
+		)),
 		Ok(())
 	);
 
 	assert_eq!(
-		bearer.check_request(&crate::Request::get(crate::ItemPath::try_from("folder_a").unwrap())),
+		bearer.check_request(&crate::Request::get(
+			crate::ItemPath::try_from("folder_a").unwrap()
+		)),
 		Err(RequestValidityError::OutOfModuleScope)
 	);
 
 	assert_eq!(
-		bearer.check_request(&crate::Request::get(crate::ItemPath::try_from("folder_b/").unwrap())),
+		bearer.check_request(&crate::Request::get(
+			crate::ItemPath::try_from("folder_b/").unwrap()
+		)),
 		Err(RequestValidityError::OutOfModuleScope)
 	);
 
 	assert_eq!(
-		bearer.check_request(&crate::Request::get(crate::ItemPath::try_from("folder_b").unwrap())),
+		bearer.check_request(&crate::Request::get(
+			crate::ItemPath::try_from("folder_b").unwrap()
+		)),
 		Err(RequestValidityError::OutOfModuleScope)
 	);
 }

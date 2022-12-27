@@ -20,24 +20,16 @@ impl Request {
 			limits: vec![],
 		}
 	}
-	pub fn head(
-		new_path: impl AsRef<crate::ItemPath>,
-	) -> Self {
+	pub fn head(new_path: impl AsRef<crate::ItemPath>) -> Self {
 		Self::new(crate::Method::Head, new_path)
 	}
-	pub fn get(
-		new_path: impl AsRef<crate::ItemPath>,
-	) -> Self {
+	pub fn get(new_path: impl AsRef<crate::ItemPath>) -> Self {
 		Self::new(crate::Method::Get, new_path)
 	}
-	pub fn put(
-		new_path: impl AsRef<crate::ItemPath>,
-	) -> Self {
+	pub fn put(new_path: impl AsRef<crate::ItemPath>) -> Self {
 		Self::new(crate::Method::Put, new_path)
 	}
-	pub fn delete(
-		new_path: impl AsRef<crate::ItemPath>,
-	) -> Self {
+	pub fn delete(new_path: impl AsRef<crate::ItemPath>) -> Self {
 		Self::new(crate::Method::Delete, new_path)
 	}
 	pub fn token(mut self, token: impl Into<crate::Token>) -> Self {
@@ -59,15 +51,16 @@ impl Request {
 
 #[test]
 fn full_constructor() {
-	let request = Request::get(crate::ItemPath::try_from("/storage/user/test_app/my_data.json").unwrap())
-		.token("token")
-		.item(
-			crate::Item::document()
-				.content(br#"{"test":"content"}"#)
-				.content_type("application/json"),
-		)
-		.add_limit(crate::Limit::if_match("good_etag"))
-		.add_limit(crate::Limit::if_none_match("bad_etag"));
+	let request =
+		Request::get(crate::ItemPath::try_from("/storage/user/test_app/my_data.json").unwrap())
+			.token("token")
+			.item(
+				crate::Item::document()
+					.content(br#"{"test":"content"}"#)
+					.content_type("application/json"),
+			)
+			.add_limit(crate::Limit::if_match("good_etag"))
+			.add_limit(crate::Limit::if_none_match("bad_etag"));
 
 	assert_eq!(
 		request,

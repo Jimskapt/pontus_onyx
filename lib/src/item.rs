@@ -50,13 +50,7 @@ impl Item {
 	}
 	pub fn clone_without_content(&self) -> Self {
 		match self {
-			Self::Folder {
-				etag,
-				last_modified,
-			} => Self::Folder {
-				etag: etag.clone(),
-				last_modified: last_modified.clone(),
-			},
+			Self::Folder { .. } => self.clone(),
 			Self::Document {
 				etag,
 				last_modified,
@@ -68,6 +62,21 @@ impl Item {
 				content: None,
 				content_type: content_type.clone(),
 			},
+		}
+	}
+}
+
+impl Item {
+	pub fn get_etag(&self) -> Option<crate::Etag> {
+		match self {
+			Self::Document { etag, .. } => etag.clone(),
+			Self::Folder { etag, .. } => etag.clone(),
+		}
+	}
+	pub fn get_last_modified(&self) -> Option<crate::LastModified> {
+		match self {
+			Self::Document { last_modified, .. } => last_modified.clone(),
+			Self::Folder { last_modified, .. } => last_modified.clone(),
 		}
 	}
 }

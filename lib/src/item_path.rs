@@ -189,7 +189,7 @@ impl TryFrom<&String> for ItemPath {
 }
 impl AsRef<ItemPath> for ItemPath {
 	fn as_ref(&self) -> &Self {
-		&self
+		self
 	}
 }
 
