@@ -10,5 +10,7 @@ pub enum ResponseStatus {
 	NoIfMatch(crate::Etag),
 	IfNoneMatch(crate::Etag),
 	ContentNotChanged,
-	NotFound,
+	NotSuitableForFolderItem,
+	MissingItem,
+	InternalError(String),
 }

@@ -280,12 +280,6 @@ pub enum ItemPathConvertError {
 	},
 }
 
-impl ItemPath {
-	pub fn target_is_document(&self) -> bool {
-		matches!(self.0.last(), Some(ItemPathPart::Document(_)))
-	}
-}
-
 #[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq)]
 pub enum ItemPathPart {
 	Folder(String),

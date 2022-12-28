@@ -102,8 +102,23 @@ static EMPTY_ENGINE_PASS_RESPONSE: &str = "TEST ENGINE : NOT EXPECTED FOR PRODUC
 #[cfg(test)]
 #[async_trait::async_trait]
 impl crate::Engine for EmptyEngineForTests {
-	async fn perform(&mut self, _: &crate::Request) -> crate::EngineResponse {
-		crate::EngineResponse::InternalError(String::from(EMPTY_ENGINE_PASS_RESPONSE))
+	async fn perform(&mut self, request: &crate::Request) -> crate::EngineResponse {
+		if request.path == "folder_a/existing.json".try_into().unwrap() {
+			return crate::EngineResponse::GetSuccessDocument(crate::Item::Document {
+				etag: Some("DOCUMENT_ETAG".into()),
+				last_modified: Some(
+					time::OffsetDateTime::from_unix_timestamp(1000)
+						.unwrap()
+						.into(),
+				),
+				content: Some(b"DOCUMENT_CONTENT".into()),
+				content_type: Some("DOCUMENT_CONTENT_TYPE".into()),
+			});
+		} else if request.path == "folder_a/not_existing.json".try_into().unwrap() {
+			return crate::EngineResponse::NotFound;
+		}
+
+		return crate::EngineResponse::InternalError(String::from(EMPTY_ENGINE_PASS_RESPONSE));
 	}
 
 	fn new_for_tests() -> Self {
@@ -311,32 +326,232 @@ async fn should_not_pass_with_token_but_wrong_method() {
 
 #[tokio::test]
 async fn get_no_if_match() {
-	todo!()
+	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:r")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				crate::Request::get(crate::ItemPath::try_from("folder_a/existing.json").unwrap())
+					.token(token)
+					.add_limit(crate::Limit::IfMatch("WRONG_ETAG".into()))
+			)
+			.await
+			.status,
+		crate::ResponseStatus::NoIfMatch("DOCUMENT_ETAG".into())
+	);
 }
 
 #[tokio::test]
 async fn get_if_match() {
-	todo!()
+	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:r")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				crate::Request::get(crate::ItemPath::try_from("folder_a/existing.json").unwrap())
+					.token(token)
+					.add_limit(crate::Limit::IfMatch("DOCUMENT_ETAG".into()))
+			)
+			.await
+			.status,
+		crate::ResponseStatus::Performed(crate::EngineResponse::GetSuccessDocument(
+			crate::Item::Document {
+				etag: Some("DOCUMENT_ETAG".into()),
+				last_modified: Some(
+					time::OffsetDateTime::from_unix_timestamp(1000)
+						.unwrap()
+						.into()
+				),
+				content: Some(b"DOCUMENT_CONTENT".into()),
+				content_type: Some("DOCUMENT_CONTENT_TYPE".into())
+			}
+		))
+	);
 }
 
 #[tokio::test]
 async fn get_if_none_match() {
-	todo!()
+	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:r")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				crate::Request::get(crate::ItemPath::try_from("folder_a/existing.json").unwrap())
+					.token(token)
+					.add_limit(crate::Limit::IfNoneMatch("DOCUMENT_ETAG".into()))
+			)
+			.await
+			.status,
+		crate::ResponseStatus::IfNoneMatch("DOCUMENT_ETAG".into())
+	);
 }
 
 #[tokio::test]
 async fn get_no_if_none_match() {
-	todo!()
+	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:r")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				crate::Request::get(crate::ItemPath::try_from("folder_a/existing.json").unwrap())
+					.token(token)
+					.add_limit(crate::Limit::IfNoneMatch("ANOTHER_DOCUMENT_ETAG".into()))
+			)
+			.await
+			.status,
+		crate::ResponseStatus::Performed(crate::EngineResponse::GetSuccessDocument(
+			crate::Item::Document {
+				etag: Some("DOCUMENT_ETAG".into()),
+				last_modified: Some(
+					time::OffsetDateTime::from_unix_timestamp(1000)
+						.unwrap()
+						.into()
+				),
+				content: Some(b"DOCUMENT_CONTENT".into()),
+				content_type: Some("DOCUMENT_CONTENT_TYPE".into())
+			}
+		))
+	);
 }
 
 #[tokio::test]
 async fn put_content_not_changed() {
-	todo!()
+	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:rw")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				crate::Request::put(crate::ItemPath::try_from("folder_a/existing.json").unwrap())
+					.token(token)
+					.item(crate::Item::Document {
+						etag: None,
+						last_modified: None,
+						content: Some("DOCUMENT_CONTENT".into()),
+						content_type: Some("DOCUMENT_CONTENT_TYPE".into())
+					})
+			)
+			.await
+			.status,
+		crate::ResponseStatus::ContentNotChanged
+	);
+}
+
+#[tokio::test]
+async fn put_folder_path() {
+	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:rw")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				crate::Request::put(crate::ItemPath::try_from("folder_a/folder_aa/").unwrap())
+					.token(token)
+					.item(crate::Item::Document {
+						etag: None,
+						last_modified: None,
+						content: Some("DOCUMENT_CONTENT".into()),
+						content_type: Some("DOCUMENT_CONTENT_TYPE".into())
+					})
+			)
+			.await
+			.status,
+		crate::ResponseStatus::NotSuitableForFolderItem
+	);
+}
+
+#[tokio::test]
+async fn put_folder_item() {
+	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:rw")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				crate::Request::put(crate::ItemPath::try_from("folder_a/folder_aa").unwrap())
+					.token(token)
+					.item(crate::Item::Folder {
+						etag: None,
+						last_modified: None,
+					})
+			)
+			.await
+			.status,
+		crate::ResponseStatus::NotSuitableForFolderItem
+	);
+}
+
+#[tokio::test]
+async fn put_none_item() {
+	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:rw")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				crate::Request::put(crate::ItemPath::try_from("folder_a/document.txt").unwrap())
+					.token(token)
+			)
+			.await
+			.status,
+		crate::ResponseStatus::MissingItem
+	);
 }
 
 #[tokio::test]
 async fn get_not_found() {
-	todo!()
+	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:r")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				crate::Request::get(
+					crate::ItemPath::try_from("folder_a/not_existing.json").unwrap()
+				)
+				.token(token)
+				.item(crate::Item::Document {
+					etag: None,
+					last_modified: None,
+					content: Some("DOCUMENT_CONTENT".into()),
+					content_type: Some("DOCUMENT_CONTENT_TYPE".into())
+				})
+			)
+			.await
+			.status,
+		crate::ResponseStatus::Performed(crate::EngineResponse::NotFound)
+	);
 }
 
 impl<E: crate::Engine> Database<E> {
@@ -345,17 +560,162 @@ impl<E: crate::Engine> Database<E> {
 
 		let status = match self.is_allowed(&request) {
 			Ok(()) => {
-				let engine_response = self.engine.perform(&request).await;
+				if (request.method == crate::Method::Put || request.method == crate::Method::Delete)
+					&& request.path.is_folder()
+				{
+					return crate::Response {
+						request,
+						status: crate::ResponseStatus::NotSuitableForFolderItem,
+					};
+				}
 
-				if engine_response.has_muted_database() {
-					for listener in &mut self.listeners {
-						if let Ok(event) = crate::Event::build_from(&request, &engine_response) {
-							listener.receive(event);
+				let get_request = crate::Request {
+					method: if request.method == crate::Method::Put {
+						crate::Method::Get
+					} else {
+						crate::Method::Head
+					},
+					path: request.path.clone(),
+					item: None,
+					limits: vec![],
+					token: None,
+				};
+				let get_response = self.engine.perform(&get_request).await;
+
+				if let crate::EngineResponse::NotFound = get_response {
+					if request.method == crate::Method::Put {
+						return crate::Response {
+							request,
+							status: crate::ResponseStatus::Performed(
+								crate::EngineResponse::NotFound,
+							),
+						};
+					}
+				} else if let crate::EngineResponse::GetSuccessDocument(get_document) =
+					&get_response
+				{
+					let get_document_etag = get_document.get_etag();
+					if let Some(get_document_etag) = get_document_etag {
+						for limit in &request.limits {
+							match limit {
+								crate::Limit::IfMatch(if_match_etag) => {
+									if get_document_etag != *if_match_etag {
+										return crate::Response {
+											request,
+											status: crate::ResponseStatus::NoIfMatch(
+												get_document_etag,
+											),
+										};
+									}
+								}
+								crate::Limit::IfNoneMatch(none_match) => {
+									if get_document_etag == *none_match {
+										return crate::Response {
+											request,
+											status: crate::ResponseStatus::IfNoneMatch(
+												get_document_etag,
+											),
+										};
+									}
+								}
+							}
 						}
+					} else {
+						return crate::Response {
+							request,
+							status: crate::ResponseStatus::InternalError(String::from(
+								"get does not returns etag",
+							)),
+						};
 					}
 				}
 
-				crate::ResponseStatus::Performed(engine_response)
+				if request.method == crate::Method::Head || request.method == crate::Method::Get {
+					crate::ResponseStatus::Performed(get_response)
+				} else {
+					match &request.item {
+						Some(crate::Item::Document {
+							etag: _,
+							last_modified: _,
+							content: request_content,
+							content_type: request_content_type,
+						}) => {
+							let prehentive_answer = if request.method == crate::Method::Put {
+								match &get_response {
+									crate::EngineResponse::GetSuccessDocument(
+										crate::Item::Document {
+											etag: _,
+											last_modified: _,
+											content: get_content,
+											content_type: get_content_type,
+										},
+									) => {
+										if request_content == get_content
+											&& request_content_type == get_content_type
+										{
+											Some(crate::ResponseStatus::ContentNotChanged)
+										} else {
+											None
+										}
+									}
+									crate::EngineResponse::GetSuccessDocument(
+										crate::Item::Folder { .. },
+									) => Some(crate::ResponseStatus::NotSuitableForFolderItem),
+									crate::EngineResponse::GetSuccessFolder { .. } => {
+										Some(crate::ResponseStatus::NotSuitableForFolderItem)
+									}
+									crate::EngineResponse::CreateSuccess(_, _) => {
+										Some(crate::ResponseStatus::InternalError(format!(
+											"get request unexpected response : {get_response:?}"
+										)))
+									}
+									crate::EngineResponse::UpdateSuccess(_, _) => {
+										Some(crate::ResponseStatus::InternalError(format!(
+											"get request unexpected response : {get_response:?}"
+										)))
+									}
+									crate::EngineResponse::DeleteSuccess => {
+										Some(crate::ResponseStatus::InternalError(format!(
+											"get request unexpected response : {get_response:?}"
+										)))
+									}
+									crate::EngineResponse::NotFound => {
+										Some(crate::ResponseStatus::Performed(
+											crate::EngineResponse::NotFound,
+										))
+									}
+									crate::EngineResponse::InternalError(error) => {
+										Some(crate::ResponseStatus::InternalError(error.clone()))
+									}
+								}
+							} else {
+								None
+							};
+
+							if let Some(prehentive_answer) = prehentive_answer {
+								prehentive_answer
+							} else {
+								let engine_response = self.engine.perform(&request).await;
+
+								if engine_response.has_muted_database() {
+									for listener in &mut self.listeners {
+										if let Ok(event) =
+											crate::Event::build_from(&request, &engine_response)
+										{
+											listener.receive(event);
+										}
+									}
+								}
+
+								crate::ResponseStatus::Performed(engine_response)
+							}
+						}
+						Some(crate::Item::Folder { .. }) => {
+							crate::ResponseStatus::NotSuitableForFolderItem
+						}
+						None => crate::ResponseStatus::MissingItem,
+					}
+				}
 			}
 			Err(error) => crate::ResponseStatus::Unallowed(error),
 		};
@@ -367,7 +727,7 @@ impl<E: crate::Engine> Database<E> {
 			.path
 			.starts_with(&crate::ItemPath::try_from("/public/").unwrap())
 		{
-			if request.path.target_is_document() {
+			if request.path.is_document() {
 				return Ok(());
 			} else {
 				return Err(AccessError::CanNotListPublic);
