@@ -431,6 +431,27 @@ async fn get_no_if_none_match() {
 }
 
 #[tokio::test]
+async fn get_if_none_match_all() {
+	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:r")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				crate::Request::get(crate::ItemPath::try_from("folder_a/existing.json").unwrap())
+					.token(token)
+					.add_limit(crate::Limit::IfNoneMatch("*".into()))
+			)
+			.await
+			.status,
+		crate::ResponseStatus::IfNoneMatch("DOCUMENT_ETAG".into())
+	);
+}
+
+#[tokio::test]
 async fn put_content_not_changed() {
 	let mut database = Database::new(<EmptyEngineForTests as crate::Engine>::new_for_tests());
 	database.create_user("username", &mut String::from("password"));
@@ -609,7 +630,9 @@ impl<E: crate::Engine> Database<E> {
 									}
 								}
 								crate::Limit::IfNoneMatch(none_match) => {
-									if get_document_etag == *none_match {
+									if get_document_etag == *none_match
+										|| *none_match == crate::Etag::from("*")
+									{
 										return crate::Response {
 											request,
 											status: crate::ResponseStatus::IfNoneMatch(

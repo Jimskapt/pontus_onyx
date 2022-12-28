@@ -49,10 +49,10 @@ async fn get_empty_path() {
 
 	assert_eq!(
 		tb.engine
-			.perform(&Request::get(pontus_onyx::ItemPath::try_from("").unwrap()))
+			.perform(&Request::get(&pontus_onyx::ROOT_PATH))
 			.await,
 		EngineResponse::GetSuccessFolder {
-			folder: root.get(&"".try_into().unwrap()).unwrap().clone(),
+			folder: root.get(&pontus_onyx::ROOT_PATH).unwrap().clone(),
 			children,
 		},
 	);
@@ -251,15 +251,21 @@ async fn put_new_document_in_existing_folder() {
 			.clone()
 	};
 
+	let new_document_data = {
+		let root = tb.engine.root_for_tests();
+		root.get(&new_document_path).unwrap().clone()
+	};
+
+	assert_eq!(response.get_new_etag(), new_document_data.get_etag());
+	assert_eq!(
+		response.get_last_modified(),
+		new_document_data.get_last_modified()
+	);
+
 	assert!(new_folder_data.get_etag().is_some());
-	assert_eq!(response.get_new_etag(), new_folder_data.get_etag());
 	assert_ne!(old_folder_data.get_etag(), new_folder_data.get_etag());
 
 	assert!(new_folder_data.get_last_modified().is_some());
-	assert_eq!(
-		response.get_last_modified(),
-		new_folder_data.get_last_modified()
-	);
 	assert_ne!(
 		old_folder_data.get_last_modified(),
 		new_folder_data.get_last_modified()
@@ -472,6 +478,10 @@ async fn delete_on_single_existing_document() {
 		let root = tb.engine.root_for_tests();
 		assert!(root.get(&document_path).is_none());
 		assert!(root.get(&folder_path).is_none());
+		assert!(root
+			.get(&pontus_onyx::ItemPath::try_from("folder_b/").unwrap())
+			.is_some());
+		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
 	}
 }
 
@@ -501,6 +511,10 @@ async fn delete_on_not_single_existing_document() {
 		assert!(root.get(&folder_path).is_some());
 		assert!(root.get(&document_path).is_none());
 		assert!(root.get(&other_document_path).is_some());
+		assert!(root
+			.get(&pontus_onyx::ItemPath::try_from("folder_a/").unwrap())
+			.is_some());
+		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
 	}
 }
 
@@ -519,4 +533,126 @@ async fn delete_on_not_existing_document() {
 
 	assert!(!response.has_muted_database());
 	assert_eq!(response, pontus_onyx::EngineResponse::NotFound);
+
+	{
+		let root = tb.engine.root_for_tests();
+		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
+		assert!(root
+			.get(&pontus_onyx::ItemPath::try_from("folder_a/").unwrap())
+			.is_some());
+		assert!(root
+			.get(&pontus_onyx::ItemPath::try_from("folder_b/").unwrap())
+			.is_some());
+	}
+}
+
+#[tokio::test]
+async fn full_engine_test() {
+	let mut engine = ThisEngine::new();
+
+	let document1_path =
+		pontus_onyx::ItemPath::try_from("qzerfgeqgeqg/qfvqwsrfer/qrfsefqergt.txt").unwrap();
+	let document2_path =
+		pontus_onyx::ItemPath::try_from("qzerfgeqgeqg/qfvqwsrfer/ftcnhcxdfsg.txt").unwrap();
+
+	{
+		let root = engine.root_for_tests();
+		assert!(root.len() == 1);
+	}
+
+	let response = engine
+		.perform(
+			&Request::put(&document1_path).item(
+				pontus_onyx::Item::document()
+					.content(b"qrfsefqergt")
+					.content_type("text/plain"),
+			),
+		)
+		.await;
+	assert!(response.has_muted_database());
+
+	let response = engine
+		.perform(
+			&Request::put(&document2_path).item(
+				pontus_onyx::Item::document()
+					.content(b"document")
+					.content_type("text/html"),
+			),
+		)
+		.await;
+	assert!(response.has_muted_database());
+
+	{
+		let root = engine.root_for_tests();
+		assert!(root.get(&document1_path).is_some());
+		assert!(root.get(&document2_path).is_some());
+		assert!(root.get(&document1_path.parent().unwrap()).is_some());
+		assert!(root
+			.get(&document1_path.parent().unwrap().parent().unwrap())
+			.is_some());
+		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
+	}
+
+	let response = engine
+		.perform(
+			&Request::put(&document2_path).item(
+				pontus_onyx::Item::document()
+					.content(b"ftcnhcxdfsg")
+					.content_type("text/plain"),
+			),
+		)
+		.await;
+	assert!(response.has_muted_database());
+
+	{
+		let root = engine.root_for_tests();
+		match root.get(&document2_path) {
+			Some(pontus_onyx::Item::Document {
+				content,
+				content_type,
+				..
+			}) => {
+				assert_eq!(*content, Some(b"ftcnhcxdfsg".into()));
+				assert_eq!(*content_type, Some("text/plain".into()));
+			}
+			Some(pontus_onyx::Item::Folder { .. }) => panic!(),
+			None => panic!(),
+		}
+	}
+
+	let response = engine.perform(&Request::get(&document1_path)).await;
+
+	{
+		let root = engine.root_for_tests();
+		assert_eq!(
+			response,
+			EngineResponse::GetSuccessDocument(root.get(&document1_path).unwrap().clone())
+		);
+	}
+
+	let response = engine.perform(&Request::delete(&document2_path)).await;
+	assert!(response.has_muted_database());
+
+	{
+		let root = engine.root_for_tests();
+		assert!(root.get(&document2_path).is_none());
+		assert!(root.get(&document2_path.parent().unwrap()).is_some());
+		assert!(root
+			.get(&document2_path.parent().unwrap().parent().unwrap())
+			.is_some());
+		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
+	}
+
+	let response = engine.perform(&Request::delete(&document1_path)).await;
+	assert!(response.has_muted_database());
+
+	{
+		let root = engine.root_for_tests();
+		assert!(root.get(&document1_path).is_none());
+		assert!(root.get(&document1_path.parent().unwrap()).is_none());
+		assert!(root
+			.get(&document1_path.parent().unwrap().parent().unwrap())
+			.is_none());
+		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
+	}
 }

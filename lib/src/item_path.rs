@@ -22,7 +22,17 @@ impl ItemPath {
 	pub fn is_direct_child(&self, parent: &Self) -> bool {
 		self.starts_with(parent) && self.0.len() == parent.0.len() + 1
 	}
+	pub fn parent(&self) -> Option<Self> {
+		let len = self.0.len();
+		if len > 1 {
+			Some(Self(self.0.iter().take(len - 1).cloned().collect()))
+		} else {
+			None
+		}
+	}
 }
+
+pub static ROOT_PATH: ItemPath = ItemPath(vec![]);
 
 #[test]
 fn start_with_correct_folder_value() {
@@ -130,6 +140,44 @@ fn is_not_direct_child_no_common() {
 	)
 }
 
+#[test]
+fn parent_3() {
+	assert_eq!(
+		ItemPath(vec![
+			ItemPathPart::Folder(String::from("public")),
+			ItemPathPart::Folder(String::from("path")),
+			ItemPathPart::Folder(String::from("to")),
+		])
+		.parent(),
+		Some(ItemPath(vec![
+			ItemPathPart::Folder(String::from("public")),
+			ItemPathPart::Folder(String::from("path")),
+		]))
+	);
+}
+
+#[test]
+fn parent_2() {
+	assert_eq!(
+		ItemPath(vec![
+			ItemPathPart::Folder(String::from("public")),
+			ItemPathPart::Folder(String::from("path")),
+		])
+		.parent(),
+		Some(ItemPath(
+			vec![ItemPathPart::Folder(String::from("public")),]
+		))
+	);
+}
+
+#[test]
+fn parent_1() {
+	assert_eq!(
+		ItemPath(vec![ItemPathPart::Folder(String::from("public")),]).parent(),
+		None
+	);
+}
+
 impl TryFrom<&str> for ItemPath {
 	type Error = ItemPathConvertError;
 
@@ -232,11 +280,13 @@ fn try_from_folder() {
 #[test]
 fn try_from_empty() {
 	assert_eq!(ItemPath::try_from(""), Ok(ItemPath(vec![])));
+	assert_eq!(ItemPath::try_from(""), Ok(ROOT_PATH.clone()));
 }
 
 #[test]
 fn try_from_space_empty() {
 	assert_eq!(ItemPath::try_from(" "), Ok(ItemPath(vec![])));
+	assert_eq!(ItemPath::try_from(" "), Ok(ROOT_PATH.clone()));
 }
 
 #[test]

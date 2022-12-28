@@ -11,7 +11,7 @@ impl MemoryEngine {
 	pub fn new() -> Self {
 		let mut root = BTreeMap::new();
 		root.insert(
-			"".try_into().unwrap(),
+			pontus_onyx::ROOT_PATH.clone(),
 			pontus_onyx::Item::Folder {
 				etag: Some(pontus_onyx::Etag::from(format!("{}", uuid::Uuid::new_v4()))),
 				last_modified: Some(pontus_onyx::LastModified::from(
@@ -27,8 +27,69 @@ impl MemoryEngine {
 #[async_trait::async_trait]
 impl pontus_onyx::Engine for MemoryEngine {
 	async fn perform(&mut self, request: &pontus_onyx::Request) -> EngineResponse {
-		if request.method == pontus_onyx::Method::Get || request.method == pontus_onyx::Method::Head
-		{
+		if request.method == pontus_onyx::Method::Put {
+			let new_etag = pontus_onyx::Etag::from(format!("{}", uuid::Uuid::new_v4()));
+			let new_last_modified =
+				pontus_onyx::LastModified::from(time::OffsetDateTime::now_utc());
+			let path = request.path.clone();
+
+			let mut new_item = request.item.as_ref().unwrap().clone();
+			match &mut new_item {
+				pontus_onyx::Item::Document {
+					etag,
+					last_modified,
+					content: _,
+					content_type: _,
+				} => {
+					*etag = Some(new_etag.clone());
+					*last_modified = Some(new_last_modified.clone());
+				}
+				pontus_onyx::Item::Folder {
+					etag,
+					last_modified,
+				} => {
+					*etag = Some(new_etag.clone());
+					*last_modified = Some(new_last_modified.clone());
+				}
+			};
+
+			let response = match self.root.insert(path.clone(), new_item) {
+				Some(_) => EngineResponse::UpdateSuccess(new_etag, new_last_modified),
+				None => EngineResponse::CreateSuccess(new_etag, new_last_modified),
+			};
+
+			if let Some(parent) = path.parent() {
+				self.perform(
+					&pontus_onyx::Request::put(parent).item(pontus_onyx::Item::Folder {
+						etag: None,
+						last_modified: None,
+					}),
+				)
+				.await;
+			}
+
+			response
+		} else if request.method == pontus_onyx::Method::Delete {
+			let response = match self.root.remove(&request.path) {
+				Some(_) => EngineResponse::DeleteSuccess,
+				None => EngineResponse::NotFound,
+			};
+
+			if let Some(parent) = request.path.parent() {
+				if let EngineResponse::GetSuccessFolder {
+					folder: _,
+					children,
+				} = self.perform(&pontus_onyx::Request::get(&parent)).await
+				{
+					if children.is_empty() {
+						self.perform(&pontus_onyx::Request::delete(parent)).await;
+					}
+				}
+			}
+
+			response
+		} else {
+			// GET & HEAD & others
 			if request.path.is_document() {
 				match self.root.get(&request.path) {
 					Some(item) => EngineResponse::GetSuccessDocument(
@@ -68,8 +129,6 @@ impl pontus_onyx::Engine for MemoryEngine {
 			} else {
 				EngineResponse::InternalError(String::from("path is not a folder nor a document"))
 			}
-		} else {
-			todo!()
 		}
 	}
 
@@ -159,7 +218,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 		);
 
 		root.insert(
-			"".try_into().unwrap(),
+			pontus_onyx::ROOT_PATH.clone(),
 			pontus_onyx::Item::Folder {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
