@@ -1,16 +1,28 @@
+mod content;
+mod content_type;
+mod etag;
+mod last_modified;
+mod path;
+
+pub use content::*;
+pub use content_type::*;
+pub use etag::*;
+pub use last_modified::*;
+pub use path::{Path, ROOT_PATH};
+
 #[derive(derivative::Derivative, PartialEq, Clone)]
 #[derivative(Debug)]
 pub enum Item {
 	Document {
-		etag: Option<crate::Etag>,
-		last_modified: Option<crate::LastModified>,
+		etag: Option<Etag>,
+		last_modified: Option<LastModified>,
 		#[derivative(Debug = "ignore")]
-		content: Option<crate::Content>,
-		content_type: Option<crate::ContentType>,
+		content: Option<Content>,
+		content_type: Option<ContentType>,
 	},
 	Folder {
-		etag: Option<crate::Etag>,
-		last_modified: Option<crate::LastModified>,
+		etag: Option<Etag>,
+		last_modified: Option<LastModified>,
 	},
 }
 
@@ -23,7 +35,7 @@ impl Item {
 			content_type: None,
 		}
 	}
-	pub fn content(mut self, new_content: impl Into<crate::Content>) -> Self {
+	pub fn content(mut self, new_content: impl Into<Content>) -> Self {
 		if let Self::Document {
 			ref mut content, ..
 		} = self
@@ -35,7 +47,7 @@ impl Item {
 
 		return self;
 	}
-	pub fn content_type(mut self, new_content_type: impl Into<crate::ContentType>) -> Self {
+	pub fn content_type(mut self, new_content_type: impl Into<ContentType>) -> Self {
 		if let Self::Document {
 			ref mut content_type,
 			..
@@ -67,13 +79,13 @@ impl Item {
 }
 
 impl Item {
-	pub fn get_etag(&self) -> Option<crate::Etag> {
+	pub fn get_etag(&self) -> Option<Etag> {
 		match self {
 			Self::Document { etag, .. } => etag.clone(),
 			Self::Folder { etag, .. } => etag.clone(),
 		}
 	}
-	pub fn get_last_modified(&self) -> Option<crate::LastModified> {
+	pub fn get_last_modified(&self) -> Option<LastModified> {
 		match self {
 			Self::Document { last_modified, .. } => last_modified.clone(),
 			Self::Folder { last_modified, .. } => last_modified.clone(),

@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use pontus_onyx::item::{Item, Path, ROOT_PATH};
+
 // CUSTOM SETTINGS (please edit following) :
 use crate::MemoryEngine as ThisEngine;
 
@@ -26,10 +28,10 @@ async fn get_empty_path() {
 	let root = tb.engine.root_for_tests().clone();
 
 	let mut children = BTreeMap::new();
-	let folder_a_path: pontus_onyx::ItemPath = "folder_a/".try_into().unwrap();
-	let folder_b_path: pontus_onyx::ItemPath = "folder_b/".try_into().unwrap();
-	let folder_public_path: pontus_onyx::ItemPath = "public/".try_into().unwrap();
-	let root_doc_path: pontus_onyx::ItemPath = "document.txt".try_into().unwrap();
+	let folder_a_path: Path = "folder_a/".try_into().unwrap();
+	let folder_b_path: Path = "folder_b/".try_into().unwrap();
+	let folder_public_path: Path = "public/".try_into().unwrap();
+	let root_doc_path: Path = "document.txt".try_into().unwrap();
 	children.insert(
 		folder_a_path.clone(),
 		root.get(&folder_a_path).unwrap().clone(),
@@ -48,11 +50,9 @@ async fn get_empty_path() {
 	);
 
 	assert_eq!(
-		tb.engine
-			.perform(&Request::get(&pontus_onyx::ROOT_PATH))
-			.await,
+		tb.engine.perform(&Request::get(&ROOT_PATH)).await,
 		EngineResponse::GetSuccessFolder {
-			folder: root.get(&pontus_onyx::ROOT_PATH).unwrap().clone(),
+			folder: root.get(&ROOT_PATH).unwrap().clone(),
 			children,
 		},
 	);
@@ -64,8 +64,8 @@ async fn get_folder_a() {
 	let root = tb.engine.root_for_tests();
 
 	let mut children = BTreeMap::new();
-	let folder_a = pontus_onyx::ItemPath::try_from("folder_a/").unwrap();
-	let folder_a_document = pontus_onyx::ItemPath::try_from("folder_a/document.txt").unwrap();
+	let folder_a = Path::try_from("folder_a/").unwrap();
+	let folder_a_document = Path::try_from("folder_a/document.txt").unwrap();
 	children.insert(
 		folder_a_document.clone(),
 		root.get(&folder_a_document).unwrap().clone(),
@@ -85,7 +85,7 @@ async fn get_folder_a_document() {
 	let mut tb = build_toolbox();
 	let root = tb.engine.root_for_tests();
 
-	let folder_a_document = pontus_onyx::ItemPath::try_from("folder_a/document.txt").unwrap();
+	let folder_a_document = Path::try_from("folder_a/document.txt").unwrap();
 
 	assert_eq!(
 		tb.engine.perform(&Request::get(&folder_a_document)).await,
@@ -99,8 +99,8 @@ async fn get_folder_public() {
 	let root = tb.engine.root_for_tests();
 
 	let mut children = BTreeMap::new();
-	let folder_public = pontus_onyx::ItemPath::try_from("public/").unwrap();
-	let folder_c = pontus_onyx::ItemPath::try_from("public/folder_c/").unwrap();
+	let folder_public = Path::try_from("public/").unwrap();
+	let folder_c = Path::try_from("public/folder_c/").unwrap();
 	children.insert(folder_c.clone(), root.get(&folder_c).unwrap().clone());
 
 	assert_eq!(
@@ -117,8 +117,7 @@ async fn get_folder_public_document() {
 	let mut tb = build_toolbox();
 	let root = tb.engine.root_for_tests();
 
-	let folder_public_document =
-		pontus_onyx::ItemPath::try_from("public/folder_c/document.txt").unwrap();
+	let folder_public_document = Path::try_from("public/folder_c/document.txt").unwrap();
 
 	assert_eq!(
 		tb.engine
@@ -132,7 +131,7 @@ async fn get_folder_public_document() {
 async fn get_not_existing_folder() {
 	let mut tb = build_toolbox();
 
-	let not_existing_path = pontus_onyx::ItemPath::try_from("not_existing/").unwrap();
+	let not_existing_path = Path::try_from("not_existing/").unwrap();
 
 	assert_eq!(
 		tb.engine.perform(&Request::get(&not_existing_path)).await,
@@ -144,7 +143,7 @@ async fn get_not_existing_folder() {
 async fn get_not_existing_document() {
 	let mut tb = build_toolbox();
 
-	let not_existing_path = pontus_onyx::ItemPath::try_from("folder_a/not_existing.txt").unwrap();
+	let not_existing_path = Path::try_from("folder_a/not_existing.txt").unwrap();
 
 	assert_eq!(
 		tb.engine.perform(&Request::get(&not_existing_path)).await,
@@ -156,8 +155,7 @@ async fn get_not_existing_document() {
 async fn get_not_existing_folder_and_document() {
 	let mut tb = build_toolbox();
 
-	let not_existing_path =
-		pontus_onyx::ItemPath::try_from("not_existing/not_existing.txt").unwrap();
+	let not_existing_path = Path::try_from("not_existing/not_existing.txt").unwrap();
 
 	assert_eq!(
 		tb.engine.perform(&Request::get(&not_existing_path)).await,
@@ -173,7 +171,7 @@ async fn get_not_existing_folder_and_document() {
 async fn head_folder_a() {
 	let mut tb = build_toolbox();
 	let root = tb.engine.root_for_tests();
-	let folder_a = pontus_onyx::ItemPath::try_from("folder_a/").unwrap();
+	let folder_a = Path::try_from("folder_a/").unwrap();
 
 	assert_eq!(
 		tb.engine.perform(&Request::head(&folder_a)).await,
@@ -189,7 +187,7 @@ async fn head_folder_a_document() {
 	let mut tb = build_toolbox();
 	let root = tb.engine.root_for_tests();
 
-	let folder_a_document = pontus_onyx::ItemPath::try_from("folder_a/document.txt").unwrap();
+	let folder_a_document = Path::try_from("folder_a/document.txt").unwrap();
 
 	assert_eq!(
 		tb.engine.perform(&Request::head(&folder_a_document)).await,
@@ -205,7 +203,7 @@ async fn head_folder_a_document() {
 async fn head_not_existing_document() {
 	let mut tb = build_toolbox();
 
-	let not_existing_path = pontus_onyx::ItemPath::try_from("folder_a/not_existing.txt").unwrap();
+	let not_existing_path = Path::try_from("folder_a/not_existing.txt").unwrap();
 
 	assert_eq!(
 		tb.engine.perform(&Request::head(&not_existing_path)).await,
@@ -223,30 +221,28 @@ async fn put_new_document_in_existing_folder() {
 
 	let old_folder_data = {
 		let root = tb.engine.root_for_tests();
-		root.get(&pontus_onyx::ItemPath::try_from("folder_a/").unwrap())
+		root.get(&Path::try_from("folder_a/").unwrap())
 			.unwrap()
 			.clone()
 	};
 
-	let new_document_path = pontus_onyx::ItemPath::try_from("folder_a/new_document.txt").unwrap();
+	let new_document_path = Path::try_from("folder_a/new_document.txt").unwrap();
 
 	let response = tb
 		.engine
-		.perform(
-			&Request::put(&new_document_path).item(pontus_onyx::Item::Document {
-				etag: None,
-				last_modified: None,
-				content: Some(b"new_document content".into()),
-				content_type: Some("text/html".into()),
-			}),
-		)
+		.perform(&Request::put(&new_document_path).item(Item::Document {
+			etag: None,
+			last_modified: None,
+			content: Some(b"new_document content".into()),
+			content_type: Some("text/html".into()),
+		}))
 		.await;
 
 	assert!(response.has_muted_database());
 
 	let new_folder_data = {
 		let root = tb.engine.root_for_tests();
-		root.get(&pontus_onyx::ItemPath::try_from("folder_a/").unwrap())
+		root.get(&Path::try_from("folder_a/").unwrap())
 			.unwrap()
 			.clone()
 	};
@@ -279,28 +275,24 @@ async fn put_new_document_in_existing_folder() {
 async fn put_new_document_in_new_folder() {
 	let mut tb = build_toolbox();
 
-	let new_document_path = pontus_onyx::ItemPath::try_from("new_folder/new_document.txt").unwrap();
+	let new_document_path = Path::try_from("new_folder/new_document.txt").unwrap();
 
 	let response = tb
 		.engine
-		.perform(
-			&Request::put(&new_document_path).item(pontus_onyx::Item::Document {
-				etag: None,
-				last_modified: None,
-				content: Some(b"new_document content".into()),
-				content_type: Some("text/html".into()),
-			}),
-		)
+		.perform(&Request::put(&new_document_path).item(Item::Document {
+			etag: None,
+			last_modified: None,
+			content: Some(b"new_document content".into()),
+			content_type: Some("text/html".into()),
+		}))
 		.await;
 
 	assert!(response.has_muted_database());
 
 	let root = tb.engine.root_for_tests();
+	assert!(root.get(&Path::try_from("new_folder/").unwrap()).is_some());
 	assert!(root
-		.get(&pontus_onyx::ItemPath::try_from("new_folder/").unwrap())
-		.is_some());
-	assert!(root
-		.get(&pontus_onyx::ItemPath::try_from("new_folder/new_document.txt").unwrap())
+		.get(&Path::try_from("new_folder/new_document.txt").unwrap())
 		.is_some());
 }
 
@@ -308,7 +300,7 @@ async fn put_new_document_in_new_folder() {
 async fn put_new_content_on_existing_document() {
 	let mut tb = build_toolbox();
 
-	let document_path = pontus_onyx::ItemPath::try_from("folder_a/document.txt").unwrap();
+	let document_path = Path::try_from("folder_a/document.txt").unwrap();
 
 	let old_document_data = {
 		let root = tb.engine.root_for_tests();
@@ -317,14 +309,12 @@ async fn put_new_content_on_existing_document() {
 
 	let response = tb
 		.engine
-		.perform(
-			&Request::put(&document_path).item(pontus_onyx::Item::Document {
-				etag: None,
-				last_modified: None,
-				content: Some(b"document new content".into()),
-				content_type: Some("text/html".into()),
-			}),
-		)
+		.perform(&Request::put(&document_path).item(Item::Document {
+			etag: None,
+			last_modified: None,
+			content: Some(b"document new content".into()),
+			content_type: Some("text/html".into()),
+		}))
 		.await;
 
 	assert!(response.has_muted_database());
@@ -334,7 +324,7 @@ async fn put_new_content_on_existing_document() {
 		root.get(&document_path).unwrap().clone()
 	};
 
-	let (old_content, old_content_type) = if let pontus_onyx::Item::Document {
+	let (old_content, old_content_type) = if let Item::Document {
 		content: ref old_content,
 		content_type: ref old_content_type,
 		..
@@ -344,7 +334,7 @@ async fn put_new_content_on_existing_document() {
 	} else {
 		panic!()
 	};
-	let (new_content, new_content_type) = if let pontus_onyx::Item::Document {
+	let (new_content, new_content_type) = if let Item::Document {
 		content: ref new_content,
 		content_type: ref new_content_type,
 		..
@@ -382,7 +372,7 @@ async fn put_new_content_on_existing_document() {
 async fn put_new_content_type_on_existing_document() {
 	let mut tb = build_toolbox();
 
-	let document_path = pontus_onyx::ItemPath::try_from("folder_a/document.txt").unwrap();
+	let document_path = Path::try_from("folder_a/document.txt").unwrap();
 
 	let old_document_data = {
 		let root = tb.engine.root_for_tests();
@@ -391,14 +381,12 @@ async fn put_new_content_type_on_existing_document() {
 
 	let response = tb
 		.engine
-		.perform(
-			&Request::put(&document_path).item(pontus_onyx::Item::Document {
-				etag: None,
-				last_modified: None,
-				content: Some(b"My Document Content Here (folder a)".into()),
-				content_type: Some("text/plain".into()),
-			}),
-		)
+		.perform(&Request::put(&document_path).item(Item::Document {
+			etag: None,
+			last_modified: None,
+			content: Some(b"My Document Content Here (folder a)".into()),
+			content_type: Some("text/plain".into()),
+		}))
 		.await;
 
 	assert!(response.has_muted_database());
@@ -408,7 +396,7 @@ async fn put_new_content_type_on_existing_document() {
 		root.get(&document_path).unwrap().clone()
 	};
 
-	let (old_content, old_content_type) = if let pontus_onyx::Item::Document {
+	let (old_content, old_content_type) = if let Item::Document {
 		content: ref old_content,
 		content_type: ref old_content_type,
 		..
@@ -418,7 +406,7 @@ async fn put_new_content_type_on_existing_document() {
 	} else {
 		panic!()
 	};
-	let (new_content, new_content_type) = if let pontus_onyx::Item::Document {
+	let (new_content, new_content_type) = if let Item::Document {
 		content: ref new_content,
 		content_type: ref new_content_type,
 		..
@@ -460,8 +448,8 @@ async fn put_new_content_type_on_existing_document() {
 async fn delete_on_single_existing_document() {
 	let mut tb = build_toolbox();
 
-	let folder_path = pontus_onyx::ItemPath::try_from("folder_a/").unwrap();
-	let document_path = pontus_onyx::ItemPath::try_from("folder_a/document.txt").unwrap();
+	let folder_path = Path::try_from("folder_a/").unwrap();
+	let document_path = Path::try_from("folder_a/document.txt").unwrap();
 
 	{
 		let root = tb.engine.root_for_tests();
@@ -478,10 +466,8 @@ async fn delete_on_single_existing_document() {
 		let root = tb.engine.root_for_tests();
 		assert!(root.get(&document_path).is_none());
 		assert!(root.get(&folder_path).is_none());
-		assert!(root
-			.get(&pontus_onyx::ItemPath::try_from("folder_b/").unwrap())
-			.is_some());
-		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
+		assert!(root.get(&Path::try_from("folder_b/").unwrap()).is_some());
+		assert!(root.get(&ROOT_PATH).is_some());
 	}
 }
 
@@ -489,10 +475,9 @@ async fn delete_on_single_existing_document() {
 async fn delete_on_not_single_existing_document() {
 	let mut tb = build_toolbox();
 
-	let folder_path = pontus_onyx::ItemPath::try_from("folder_b/").unwrap();
-	let document_path = pontus_onyx::ItemPath::try_from("folder_b/document.txt").unwrap();
-	let other_document_path =
-		pontus_onyx::ItemPath::try_from("folder_b/other_document.txt").unwrap();
+	let folder_path = Path::try_from("folder_b/").unwrap();
+	let document_path = Path::try_from("folder_b/document.txt").unwrap();
+	let other_document_path = Path::try_from("folder_b/other_document.txt").unwrap();
 
 	{
 		let root = tb.engine.root_for_tests();
@@ -511,10 +496,8 @@ async fn delete_on_not_single_existing_document() {
 		assert!(root.get(&folder_path).is_some());
 		assert!(root.get(&document_path).is_none());
 		assert!(root.get(&other_document_path).is_some());
-		assert!(root
-			.get(&pontus_onyx::ItemPath::try_from("folder_a/").unwrap())
-			.is_some());
-		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
+		assert!(root.get(&Path::try_from("folder_a/").unwrap()).is_some());
+		assert!(root.get(&ROOT_PATH).is_some());
 	}
 }
 
@@ -522,7 +505,7 @@ async fn delete_on_not_single_existing_document() {
 async fn delete_on_not_existing_document() {
 	let mut tb = build_toolbox();
 
-	let document_path = pontus_onyx::ItemPath::try_from("not_existing_document.txt").unwrap();
+	let document_path = Path::try_from("not_existing_document.txt").unwrap();
 
 	{
 		let root = tb.engine.root_for_tests();
@@ -536,13 +519,9 @@ async fn delete_on_not_existing_document() {
 
 	{
 		let root = tb.engine.root_for_tests();
-		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
-		assert!(root
-			.get(&pontus_onyx::ItemPath::try_from("folder_a/").unwrap())
-			.is_some());
-		assert!(root
-			.get(&pontus_onyx::ItemPath::try_from("folder_b/").unwrap())
-			.is_some());
+		assert!(root.get(&ROOT_PATH).is_some());
+		assert!(root.get(&Path::try_from("folder_a/").unwrap()).is_some());
+		assert!(root.get(&Path::try_from("folder_b/").unwrap()).is_some());
 	}
 }
 
@@ -550,10 +529,8 @@ async fn delete_on_not_existing_document() {
 async fn full_engine_test() {
 	let mut engine = ThisEngine::new();
 
-	let document1_path =
-		pontus_onyx::ItemPath::try_from("qzerfgeqgeqg/qfvqwsrfer/qrfsefqergt.txt").unwrap();
-	let document2_path =
-		pontus_onyx::ItemPath::try_from("qzerfgeqgeqg/qfvqwsrfer/ftcnhcxdfsg.txt").unwrap();
+	let document1_path = Path::try_from("qzerfgeqgeqg/qfvqwsrfer/qrfsefqergt.txt").unwrap();
+	let document2_path = Path::try_from("qzerfgeqgeqg/qfvqwsrfer/ftcnhcxdfsg.txt").unwrap();
 
 	{
 		let root = engine.root_for_tests();
@@ -563,7 +540,7 @@ async fn full_engine_test() {
 	let response = engine
 		.perform(
 			&Request::put(&document1_path).item(
-				pontus_onyx::Item::document()
+				Item::document()
 					.content(b"qrfsefqergt")
 					.content_type("text/plain"),
 			),
@@ -574,7 +551,7 @@ async fn full_engine_test() {
 	let response = engine
 		.perform(
 			&Request::put(&document2_path).item(
-				pontus_onyx::Item::document()
+				Item::document()
 					.content(b"document")
 					.content_type("text/html"),
 			),
@@ -590,13 +567,13 @@ async fn full_engine_test() {
 		assert!(root
 			.get(&document1_path.parent().unwrap().parent().unwrap())
 			.is_some());
-		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
+		assert!(root.get(&ROOT_PATH).is_some());
 	}
 
 	let response = engine
 		.perform(
 			&Request::put(&document2_path).item(
-				pontus_onyx::Item::document()
+				Item::document()
 					.content(b"ftcnhcxdfsg")
 					.content_type("text/plain"),
 			),
@@ -607,7 +584,7 @@ async fn full_engine_test() {
 	{
 		let root = engine.root_for_tests();
 		match root.get(&document2_path) {
-			Some(pontus_onyx::Item::Document {
+			Some(Item::Document {
 				content,
 				content_type,
 				..
@@ -615,7 +592,7 @@ async fn full_engine_test() {
 				assert_eq!(*content, Some(b"ftcnhcxdfsg".into()));
 				assert_eq!(*content_type, Some("text/plain".into()));
 			}
-			Some(pontus_onyx::Item::Folder { .. }) => panic!(),
+			Some(Item::Folder { .. }) => panic!(),
 			None => panic!(),
 		}
 	}
@@ -640,7 +617,7 @@ async fn full_engine_test() {
 		assert!(root
 			.get(&document2_path.parent().unwrap().parent().unwrap())
 			.is_some());
-		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
+		assert!(root.get(&ROOT_PATH).is_some());
 	}
 
 	let response = engine.perform(&Request::delete(&document1_path)).await;
@@ -653,6 +630,6 @@ async fn full_engine_test() {
 		assert!(root
 			.get(&document1_path.parent().unwrap().parent().unwrap())
 			.is_none());
-		assert!(root.get(&pontus_onyx::ROOT_PATH).is_some());
+		assert!(root.get(&ROOT_PATH).is_some());
 	}
 }

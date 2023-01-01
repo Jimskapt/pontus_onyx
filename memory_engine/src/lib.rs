@@ -1,20 +1,23 @@
 use std::collections::BTreeMap;
 
-use pontus_onyx::EngineResponse;
+use pontus_onyx::{item::Item, item::Path, EngineResponse, Method};
 
 #[derive(Default)]
 pub struct MemoryEngine {
-	root: BTreeMap<pontus_onyx::ItemPath, pontus_onyx::Item>,
+	root: BTreeMap<Path, Item>,
 }
 
 impl MemoryEngine {
 	pub fn new() -> Self {
 		let mut root = BTreeMap::new();
 		root.insert(
-			pontus_onyx::ROOT_PATH.clone(),
-			pontus_onyx::Item::Folder {
-				etag: Some(pontus_onyx::Etag::from(format!("{}", uuid::Uuid::new_v4()))),
-				last_modified: Some(pontus_onyx::LastModified::from(
+			pontus_onyx::item::ROOT_PATH.clone(),
+			Item::Folder {
+				etag: Some(pontus_onyx::item::Etag::from(format!(
+					"{}",
+					uuid::Uuid::new_v4()
+				))),
+				last_modified: Some(pontus_onyx::item::LastModified::from(
 					time::OffsetDateTime::now_utc(),
 				)),
 			},
@@ -27,15 +30,15 @@ impl MemoryEngine {
 #[async_trait::async_trait]
 impl pontus_onyx::Engine for MemoryEngine {
 	async fn perform(&mut self, request: &pontus_onyx::Request) -> EngineResponse {
-		if request.method == pontus_onyx::Method::Put {
-			let new_etag = pontus_onyx::Etag::from(format!("{}", uuid::Uuid::new_v4()));
+		if request.method == Method::Put {
+			let new_etag = pontus_onyx::item::Etag::from(format!("{}", uuid::Uuid::new_v4()));
 			let new_last_modified =
-				pontus_onyx::LastModified::from(time::OffsetDateTime::now_utc());
+				pontus_onyx::item::LastModified::from(time::OffsetDateTime::now_utc());
 			let path = request.path.clone();
 
 			let mut new_item = request.item.as_ref().unwrap().clone();
 			match &mut new_item {
-				pontus_onyx::Item::Document {
+				Item::Document {
 					etag,
 					last_modified,
 					content: _,
@@ -44,7 +47,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 					*etag = Some(new_etag.clone());
 					*last_modified = Some(new_last_modified.clone());
 				}
-				pontus_onyx::Item::Folder {
+				Item::Folder {
 					etag,
 					last_modified,
 				} => {
@@ -59,17 +62,15 @@ impl pontus_onyx::Engine for MemoryEngine {
 			};
 
 			if let Some(parent) = path.parent() {
-				self.perform(
-					&pontus_onyx::Request::put(parent).item(pontus_onyx::Item::Folder {
-						etag: None,
-						last_modified: None,
-					}),
-				)
+				self.perform(&pontus_onyx::Request::put(parent).item(Item::Folder {
+					etag: None,
+					last_modified: None,
+				}))
 				.await;
 			}
 
 			response
-		} else if request.method == pontus_onyx::Method::Delete {
+		} else if request.method == Method::Delete {
 			let response = match self.root.remove(&request.path) {
 				Some(_) => EngineResponse::DeleteSuccess,
 				None => EngineResponse::NotFound,
@@ -92,13 +93,13 @@ impl pontus_onyx::Engine for MemoryEngine {
 			// GET & HEAD & others
 			if request.path.is_document() {
 				match self.root.get(&request.path) {
-					Some(item) => EngineResponse::GetSuccessDocument(
-						if request.method != pontus_onyx::Method::Head {
+					Some(item) => {
+						EngineResponse::GetSuccessDocument(if request.method != Method::Head {
 							item.clone()
 						} else {
 							item.clone_without_content()
-						},
-					),
+						})
+					}
 					None => EngineResponse::NotFound,
 				}
 			} else if request.path.is_folder() {
@@ -115,7 +116,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 					children,
 				} = &mut response
 				{
-					if request.method != pontus_onyx::Method::Head {
+					if request.method != Method::Head {
 						*children = self
 							.root
 							.iter()
@@ -137,7 +138,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 
 		root.insert(
 			"folder_a/document.txt".try_into().unwrap(),
-			pontus_onyx::Item::Document {
+			Item::Document {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
 				content: Some(b"My Document Content Here (folder a)".into()),
@@ -147,7 +148,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 
 		root.insert(
 			"folder_b/document.txt".try_into().unwrap(),
-			pontus_onyx::Item::Document {
+			Item::Document {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
 				content: Some(b"My Document Content Here (folder b)".into()),
@@ -157,7 +158,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 
 		root.insert(
 			"folder_b/other_document.txt".try_into().unwrap(),
-			pontus_onyx::Item::Document {
+			Item::Document {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
 				content: Some(b"My Other Document Content Here (folder b)".into()),
@@ -167,7 +168,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 
 		root.insert(
 			"folder_a/".try_into().unwrap(),
-			pontus_onyx::Item::Folder {
+			Item::Folder {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
 			},
@@ -175,7 +176,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 
 		root.insert(
 			"folder_b/".try_into().unwrap(),
-			pontus_onyx::Item::Folder {
+			Item::Folder {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
 			},
@@ -183,7 +184,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 
 		root.insert(
 			"public/folder_c/document.txt".try_into().unwrap(),
-			pontus_onyx::Item::Document {
+			Item::Document {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
 				content: Some(b"My Document Content Here (folder c)".into()),
@@ -193,7 +194,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 
 		root.insert(
 			"public/folder_c/".try_into().unwrap(),
-			pontus_onyx::Item::Folder {
+			Item::Folder {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
 			},
@@ -201,7 +202,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 
 		root.insert(
 			"public/".try_into().unwrap(),
-			pontus_onyx::Item::Folder {
+			Item::Folder {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
 			},
@@ -209,7 +210,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 
 		root.insert(
 			"document.txt".try_into().unwrap(),
-			pontus_onyx::Item::Document {
+			Item::Document {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
 				content: Some(b"My Document Content Here (root)".into()),
@@ -218,8 +219,8 @@ impl pontus_onyx::Engine for MemoryEngine {
 		);
 
 		root.insert(
-			pontus_onyx::ROOT_PATH.clone(),
-			pontus_onyx::Item::Folder {
+			pontus_onyx::item::ROOT_PATH.clone(),
+			Item::Folder {
 				etag: Some(format!("{}", uuid::Uuid::new_v4()).into()),
 				last_modified: Some(time::OffsetDateTime::now_utc().into()),
 			},
@@ -228,7 +229,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 		Self { root }
 	}
 
-	fn root_for_tests(&self) -> BTreeMap<pontus_onyx::ItemPath, pontus_onyx::Item> {
+	fn root_for_tests(&self) -> BTreeMap<Path, Item> {
 		self.root.clone()
 	}
 }

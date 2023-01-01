@@ -1,8 +1,7 @@
 /target
-/database
-**/database
 *.pem
 *.cert
+*.crt
 *.key
 
 **.gitignore.*

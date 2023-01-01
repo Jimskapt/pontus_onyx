@@ -7,8 +7,8 @@ pub struct Response {
 pub enum ResponseStatus {
 	Performed(crate::EngineResponse),
 	Unallowed(crate::AccessError),
-	NoIfMatch(crate::Etag),
-	IfNoneMatch(crate::Etag),
+	NoIfMatch(crate::item::Etag),
+	IfNoneMatch(crate::item::Etag),
 	ContentNotChanged,
 	NotSuitableForFolderItem,
 	MissingItem,
