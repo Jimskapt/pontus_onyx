@@ -8,7 +8,7 @@ pub use content::*;
 pub use content_type::*;
 pub use etag::*;
 pub use last_modified::*;
-pub use path::{Path, ROOT_PATH};
+pub use path::{Path, PathConvertError, ROOT_PATH};
 
 #[derive(derivative::Derivative, PartialEq, Clone)]
 #[derivative(Debug)]

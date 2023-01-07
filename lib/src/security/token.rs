@@ -1,6 +1,6 @@
 use crate::security::BearerAccess;
 
-#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq)]
+#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Token(pub String);
 
 impl<T: Into<String>> From<T> for Token {

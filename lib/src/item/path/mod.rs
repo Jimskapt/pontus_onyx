@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub mod tests;
 
-#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq)]
+#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Path(Vec<PathPart>);
 
 impl Path {
@@ -32,6 +32,25 @@ impl Path {
 		} else {
 			None
 		}
+	}
+	pub fn last(&self) -> Option<&PathPart> {
+		self.0.last()
+	}
+}
+impl std::fmt::Display for Path {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+		let mut result = String::new();
+
+		for part in &self.0 {
+			result += &match part {
+				PathPart::Folder(name) => {
+					format!("{name}/")
+				}
+				PathPart::Document(name) => name.clone(),
+			}
+		}
+
+		f.write_str(&result)
 	}
 }
 
@@ -107,8 +126,18 @@ pub enum PathConvertError {
 		error: PathPartConvertError,
 	},
 }
+impl std::fmt::Display for PathConvertError {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+		match self {
+			Self::WrongItemPartName { until, error } => f.write_fmt(format_args!(
+				"wrong item part name until `{until}` : {error}"
+			)),
+		}
+	}
+}
+impl std::error::Error for PathConvertError {}
 
-#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq)]
+#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, serde::Serialize, serde::Deserialize)]
 pub enum PathPart {
 	Folder(String),
 	Document(String),
@@ -118,6 +147,14 @@ impl PathPart {
 		match self {
 			Self::Folder(name) => name,
 			Self::Document(name) => name,
+		}
+	}
+}
+impl std::fmt::Display for PathPart {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+		match self {
+			Self::Document(name) => f.write_str(name),
+			Self::Folder(name) => f.write_fmt(format_args!("{}/", name)),
 		}
 	}
 }
@@ -153,4 +190,21 @@ pub enum PathPartConvertError {
 	ContainsBackslash,
 	ContainsZero,
 	ContainsItemData,
+}
+impl std::fmt::Display for PathPartConvertError {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+		match self {
+			Self::IsEmpty => f.write_fmt(format_args!("name is empty")),
+			Self::IsSinglePoint => f.write_fmt(format_args!("name is only a point (`.`)")),
+			Self::IsDoublePoint => f.write_fmt(format_args!("name is only a double-point (`..`)")),
+			Self::ContainsSlash => f.write_fmt(format_args!("name contains a slash (`/`)")),
+			Self::ContainsBackslash => {
+				f.write_fmt(format_args!("name contains a backslash (`\\`)"))
+			}
+			Self::ContainsZero => f.write_fmt(format_args!("name contains the empty char (`\\0`)")),
+			Self::ContainsItemData => {
+				f.write_fmt(format_args!("name contains the chain `.itemdata.`"))
+			}
+		}
+	}
 }

@@ -17,9 +17,20 @@ documentation = "https://docs.rs/pontus_onyx/"
 log = "0.4.17"
 rand = "0.8.5"
 regex = "1.7.0"
-time = "0.3.17"
+async-trait = "0.1.60"
+derivative = "2.2.0"
+anyhow = "1.0.68"
+time = { version = "0.3.17", features = ["serde"] }
+serde = { version = "1.0.152", features = ["derive"] }
 uuid = { version = "1.2.2", features = ["v4"] }
 zeroize = { version = "1.5.7", features = ["derive"] }
 tokio = { version = "1.23.0", features = ["rt", "macros"] }
-async-trait = "0.1.60"
-derivative = "2.2.0"
+
+actix-web = { version = "4.2.1", optional = true }
+futures-core = { version = "0.3.25", optional = true }
+actix-http = { version = "3.2.2", optional = true }
+futures-util = { version = "0.3.25", optional = true }
+serde_json = { version = "1.0.91", optional = true }
+
+[features]
+actix_server = ["dep:actix-web", "dep:futures-core", "dep:actix-http", "dep:futures-util", "dep:serde_json"]
