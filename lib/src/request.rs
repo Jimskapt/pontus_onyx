@@ -1,9 +1,5 @@
 #[cfg(feature = "actix_server")]
-use actix_web::{FromRequest, HttpMessage};
-#[cfg(feature = "actix_server")]
-use futures_util::stream::StreamExt as _;
-#[cfg(feature = "actix_server")]
-use std::future::Future;
+use actix_web::HttpMessage;
 
 use crate::{item::Path, Limit, Method};
 
@@ -198,6 +194,19 @@ pub async fn from_actix_request(
 		}
 	};
 
+	if let Ok(mut request_payload) =
+		<actix_web::web::Payload as actix_web::FromRequest>::extract(&actix_request).await
+	{
+		let mut content = actix_web::web::BytesMut::new();
+		while let Some(request_body) = futures::StreamExt::next(&mut request_payload).await {
+			let request_body = request_body.unwrap();
+			content.extend_from_slice(&request_body);
+		}
+		let content = content.freeze();
+
+		dbg!(content.to_vec());
+	}
+
 	match actix_request.path().try_into() {
 		Ok(path) => Ok(self::Request {
 			path,
@@ -221,8 +230,8 @@ async fn convert_from_actix_request() {
 	const CONTENT: &[u8] = b"Hello, world ?";
 	const CONTENT_TYPE: &str = "text/plain";
 
-	let actix_request = actix_web::test::TestRequest::with_uri(REQUEST_PATH)
-		.method(actix_web::http::Method::PUT)
+	let actix_request = actix_web::test::TestRequest::put()
+		.uri(REQUEST_PATH)
 		.insert_header((
 			actix_web::http::header::AUTHORIZATION,
 			format!("Bearer {TOKEN}"),

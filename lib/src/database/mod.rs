@@ -250,11 +250,11 @@ impl<E: Engine> Database<E> {
 						Some(crate::item::Item::Folder { .. }) => {
 							ResponseStatus::NotSuitableForFolderItem
 						}
-						None => ResponseStatus::MissingItem,
+						None => ResponseStatus::MissingRequestItem,
 					}
 				}
 			}
-			Err(error) => ResponseStatus::Unallowed(error),
+			Err(error) => ResponseStatus::Unauthorized(error),
 		};
 
 		Response { request, status }

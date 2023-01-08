@@ -28,9 +28,8 @@ tokio = { version = "1.23.0", features = ["rt", "macros"] }
 
 actix-web = { version = "4.2.1", optional = true }
 futures-core = { version = "0.3.25", optional = true }
-actix-http = { version = "3.2.2", optional = true }
-futures-util = { version = "0.3.25", optional = true }
+futures = { version = "0.3.25", optional = true }
 serde_json = { version = "1.0.91", optional = true }
 
 [features]
-actix_server = ["dep:actix-web", "dep:futures-core", "dep:actix-http", "dep:futures-util", "dep:serde_json"]
+actix_server = ["dep:actix-web", "dep:futures-core", "dep:serde_json", "dep:futures"]

@@ -65,7 +65,7 @@ async fn should_not_list_public() {
 			.perform(Request::get(Path::try_from("public/").unwrap()))
 			.await
 			.status,
-		ResponseStatus::Unallowed(AccessError::CanNotListPublic)
+		ResponseStatus::Unauthorized(AccessError::CanNotListPublic)
 	);
 }
 
@@ -76,7 +76,7 @@ async fn should_not_list_public_subfolder() {
 			.perform(Request::get(Path::try_from("public/folder/").unwrap()))
 			.await
 			.status,
-		ResponseStatus::Unallowed(AccessError::CanNotListPublic)
+		ResponseStatus::Unauthorized(AccessError::CanNotListPublic)
 	);
 }
 
@@ -115,7 +115,7 @@ async fn should_not_pass_without_token() {
 			.perform(Request::get(Path::try_from("folder_a/").unwrap()))
 			.await
 			.status,
-		ResponseStatus::Unallowed(AccessError::MissingToken)
+		ResponseStatus::Unauthorized(AccessError::MissingToken)
 	);
 }
 
@@ -151,7 +151,7 @@ async fn should_not_pass_with_wrong_token() {
 			.perform(Request::get(Path::try_from("folder_a/").unwrap()).token(token))
 			.await
 			.status,
-		ResponseStatus::Unallowed(crate::AccessError::NotValidToken(vec![
+		ResponseStatus::Unauthorized(crate::AccessError::NotValidToken(vec![
 			crate::security::TokenValidityError::RequestError(
 				crate::security::RequestValidityError::OutOfModuleScope
 			)
@@ -181,7 +181,7 @@ async fn should_not_pass_with_token_but_wrong_method() {
 			)
 			.await
 			.status,
-		ResponseStatus::Unallowed(crate::AccessError::NotValidToken(vec![
+		ResponseStatus::Unauthorized(crate::AccessError::NotValidToken(vec![
 			crate::security::TokenValidityError::RequestError(
 				crate::security::RequestValidityError::UnallowedMethod
 			)
@@ -405,7 +405,7 @@ async fn put_none_item() {
 			.perform(Request::put(Path::try_from("folder_a/document.txt").unwrap()).token(token))
 			.await
 			.status,
-		ResponseStatus::MissingItem
+		ResponseStatus::MissingRequestItem
 	);
 }
 
