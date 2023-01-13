@@ -102,7 +102,8 @@ fn full_constructor() {
 
 #[cfg(feature = "actix_server")]
 pub async fn from_actix_request(
-	actix_request: actix_web::HttpRequest,
+	actix_request: &actix_web::HttpRequest,
+	actix_payload: &mut actix_web::dev::Payload,
 ) -> Result<self::Request, anyhow::Error> {
 	let token = {
 		if let Some(auth) = actix_request
@@ -122,7 +123,7 @@ pub async fn from_actix_request(
 
 	let mut limits = vec![];
 	match <actix_web::http::header::IfMatch as actix_web::http::header::Header>::parse(
-		&actix_request,
+		actix_request,
 	) {
 		Ok(actix_web::http::header::IfMatch::Any) => {
 			limits.push(Limit::IfMatch(crate::item::Etag::from("*")));
@@ -141,7 +142,7 @@ pub async fn from_actix_request(
 	}
 
 	match <actix_web::http::header::IfNoneMatch as actix_web::http::header::Header>::parse(
-		&actix_request,
+		actix_request,
 	) {
 		Ok(actix_web::http::header::IfNoneMatch::Any) => {
 			limits.push(Limit::IfNoneMatch(crate::item::Etag::from("*")));
@@ -172,8 +173,11 @@ pub async fn from_actix_request(
 	};
 
 	let item = {
-		if let Ok(content) =
-			dbg!(<actix_web::web::Bytes as actix_web::FromRequest>::extract(&actix_request).await)
+		if let Ok(content) = <actix_web::web::Bytes as actix_web::FromRequest>::from_request(
+			actix_request,
+			actix_payload,
+		)
+		.await
 		{
 			let content: &[u8] = &content;
 
@@ -194,29 +198,24 @@ pub async fn from_actix_request(
 		}
 	};
 
-	if let Ok(mut request_payload) =
-		<actix_web::web::Payload as actix_web::FromRequest>::extract(&actix_request).await
+	match <actix_web::web::Path<String> as actix_web::FromRequest>::from_request(
+		actix_request,
+		actix_payload,
+	)
+	.await
 	{
-		let mut content = actix_web::web::BytesMut::new();
-		while let Some(request_body) = futures::StreamExt::next(&mut request_payload).await {
-			let request_body = request_body.unwrap();
-			content.extend_from_slice(&request_body);
-		}
-		let content = content.freeze();
-
-		dbg!(content.to_vec());
-	}
-
-	match actix_request.path().try_into() {
-		Ok(path) => Ok(self::Request {
-			path,
-			method: actix_request.method().into(),
-			token,
-			limits,
-			item,
-			origin,
-		}),
-		Err(err) => Err(err.into()),
+		Ok(path) => match crate::item::Path::try_from(path.into_inner()) {
+			Ok(path) => Ok(self::Request {
+				path,
+				method: actix_request.method().into(),
+				token,
+				limits,
+				item,
+				origin,
+			}),
+			Err(err) => Err(err.into()),
+		},
+		Err(err) => todo!(),
 	}
 }
 
@@ -231,28 +230,34 @@ async fn convert_from_actix_request() {
 	const CONTENT_TYPE: &str = "text/plain";
 
 	let actix_request = actix_web::test::TestRequest::put()
-		.uri(REQUEST_PATH)
+		.uri(&format!("/storage{REQUEST_PATH}"))
 		.insert_header((
 			actix_web::http::header::AUTHORIZATION,
 			format!("Bearer {TOKEN}"),
 		))
+		.param("path", REQUEST_PATH)
 		.insert_header((actix_web::http::header::CONTENT_TYPE, CONTENT_TYPE))
 		.insert_header((actix_web::http::header::IF_MATCH, format!("\"{IF_MATCH}\"")))
 		.insert_header((actix_web::http::header::IF_NONE_MATCH, IF_NONE_MATCH))
 		.insert_header((actix_web::http::header::CONTENT_LENGTH, CONTENT.len()))
 		.insert_header((actix_web::http::header::ORIGIN, "test"))
-		.set_payload(CONTENT)
 		.to_http_request();
 
+	let (mut sender, temp) = actix_http::h1::Payload::create(true);
+	sender.feed_data(CONTENT.into());
+	let mut payload = actix_web::dev::Payload::H1 { payload: temp };
+
 	assert_eq!(
-		from_actix_request(actix_request).await.unwrap(),
+		from_actix_request(&actix_request, &mut payload)
+			.await
+			.unwrap(),
 		Request {
 			path: crate::item::Path::try_from(REQUEST_PATH).unwrap(),
 			method: crate::Method::Put,
 			token: Some(crate::security::Token::from(TOKEN)),
 			limits: vec![
+				crate::Limit::IfMatch(crate::item::Etag::from(IF_MATCH)),
 				crate::Limit::IfNoneMatch(crate::item::Etag::from(IF_NONE_MATCH)),
-				crate::Limit::IfMatch(crate::item::Etag::from(IF_MATCH))
 			],
 			item: Some(crate::item::Item::Document {
 				etag: None,

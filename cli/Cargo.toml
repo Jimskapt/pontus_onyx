@@ -1,0 +1,28 @@
+[package]
+name = "pontus_onyx_cli"
+
+[package.version]
+workspace = true
+
+[package.authors]
+workspace = true
+
+[package.edition]
+workspace = true
+
+[package.license]
+workspace = true
+
+[package.readme]
+workspace = true
+
+[package.repository]
+workspace = true
+
+[dependencies]
+pontus_onyx = { path = "../lib", features = ["actix_server"] }
+pontus_onyx_memory_engine = { path = "../memory_engine" }
+
+actix-web = { version = "4.2.1" }
+env_logger = "0.10.0"
+log = "0.4.17"

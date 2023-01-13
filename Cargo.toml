@@ -1,5 +1,14 @@
+[workspace.package]
+version = "0.19.0"
+authors = ["Jimskapt"]
+edition = "2021"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/Jimskapt/pontus_onyx"
+
 [workspace]
 members = [
     "lib",
     "memory_engine",
+    "cli",
 ]

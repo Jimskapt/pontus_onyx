@@ -10,7 +10,7 @@ pub mod tests;
 pub struct Database<E: Engine> {
 	engine: E,
 	users: Vec<crate::User>,
-	listeners: Vec<Box<dyn crate::Listener>>,
+	listeners: Vec<Box<dyn crate::Listener + Send>>,
 	settings: crate::DatabaseSettings,
 }
 
@@ -93,7 +93,7 @@ impl<E: Engine> Database<E> {
 			return Err(AuthenticateError::UserNotFound(username.clone()));
 		}
 	}
-	pub fn register_listener(&mut self, listener: Box<dyn crate::Listener>) {
+	pub fn register_listener(&mut self, listener: Box<dyn crate::Listener + Send>) {
 		self.listeners.push(listener);
 	}
 }
@@ -128,7 +128,11 @@ impl<E: Engine> Database<E> {
 				let get_response = self.engine.perform(&get_request).await;
 
 				if let EngineResponse::NotFound = get_response {
-					if request.method == Method::Put {
+					if request.method == Method::Put
+						&& request.limits.iter().any(|limit| {
+							matches!(limit, crate::Limit::IfMatch(_))
+								|| matches!(limit, crate::Limit::IfNoneMatch(_))
+						}) {
 						return Response {
 							request,
 							status: ResponseStatus::Performed(EngineResponse::NotFound),
@@ -169,7 +173,7 @@ impl<E: Engine> Database<E> {
 					}
 				}
 
-				if request.method == Method::Head || request.method == Method::Get {
+				if request.method == Method::Head {
 					ResponseStatus::Performed(get_response)
 				} else {
 					match &request.item {
@@ -219,7 +223,14 @@ impl<E: Engine> Database<E> {
 										)))
 									}
 									EngineResponse::NotFound => {
-										Some(ResponseStatus::Performed(EngineResponse::NotFound))
+										if request.limits.iter().any(|limit| {
+											matches!(limit, crate::Limit::IfMatch(_))
+												|| matches!(limit, crate::Limit::IfNoneMatch(_))
+										}) {
+											Some(ResponseStatus::Performed(EngineResponse::NotFound))
+										} else {
+											None
+										}
 									}
 									EngineResponse::InternalError(error) => {
 										Some(ResponseStatus::InternalError(error.clone()))
@@ -250,7 +261,25 @@ impl<E: Engine> Database<E> {
 						Some(crate::item::Item::Folder { .. }) => {
 							ResponseStatus::NotSuitableForFolderItem
 						}
-						None => ResponseStatus::MissingRequestItem,
+						None => {
+							if request.method == crate::Method::Put {
+								ResponseStatus::MissingRequestItem
+							} else {
+								let engine_response = self.engine.perform(&request).await;
+
+								if engine_response.has_muted_database() {
+									for listener in &mut self.listeners {
+										if let Ok(event) =
+											crate::Event::build_from(&request, &engine_response)
+										{
+											listener.receive(event);
+										}
+									}
+								}
+
+								ResponseStatus::Performed(engine_response)
+							}
+						},
 					}
 				}
 			}

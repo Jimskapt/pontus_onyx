@@ -137,6 +137,54 @@ fn multiple_modules() {
 	);
 }
 
+#[test]
+fn joker_modules() {
+	let token = TokenMetadata {
+		creation: time::OffsetDateTime::now_utc() - time::Duration::seconds(5000),
+		accesses: vec![BearerAccess {
+			right: crate::security::BearerAccessRight::ReadWrite,
+			module: String::from("*"),
+		}],
+	};
+
+	assert_eq!(
+		token.check_request(&crate::Request::get(
+			crate::item::Path::try_from("folder_a/").unwrap()
+		)),
+		Ok(())
+	);
+	assert_eq!(
+		token.check_request(&crate::Request::get(
+			crate::item::Path::try_from("folder_b/").unwrap()
+		)),
+		Ok(())
+	);
+	assert_eq!(
+		token.check_request(&crate::Request::get(
+			crate::item::Path::try_from("folder_c/").unwrap()
+		)),
+		Ok(())
+	);
+	assert_eq!(
+		token.check_request(&crate::Request::get(
+			crate::item::Path::try_from("folder_d/").unwrap()
+		)),
+		Ok(())
+	);
+	assert_eq!(
+		token.check_request(&crate::Request::get(
+			crate::item::Path::try_from("folder_e/").unwrap()
+		)),
+		Ok(())
+	);
+	assert_eq!(
+		token.check_request(&crate::Request::get(
+			crate::item::Path::try_from("folder_f/").unwrap()
+		)),
+		Ok(())
+	);
+}
+
 #[derive(Debug, PartialEq)]
 pub enum TokenValidityError {
 	LifetimeExpirated(i64),

@@ -410,6 +410,68 @@ async fn put_none_item() {
 }
 
 #[tokio::test]
+async fn put_not_existing() {
+	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:rw")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				Request::put(Path::try_from("folder_a/not_existing.json").unwrap())
+					.token(token)
+					.item(crate::item::Item::Document {
+						etag: None,
+						last_modified: None,
+						content: Some("DOCUMENT_CONTENT".into()),
+						content_type: Some("DOCUMENT_CONTENT_TYPE".into())
+					})
+			)
+			.await
+			.status,
+		ResponseStatus::Performed(EngineResponse::CreateSuccess(
+			"DOCUMENT_ETAG".into(),
+			time::OffsetDateTime::from_unix_timestamp(1000)
+				.unwrap()
+				.into()
+		))
+	);
+}
+
+#[tokio::test]
+async fn put_existing() {
+	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
+	database.create_user("username", &mut String::from("password"));
+	let token = database
+		.generate_token("username", &mut String::from("password"), "folder_a:rw")
+		.unwrap();
+
+	assert_eq!(
+		database
+			.perform(
+				Request::put(Path::try_from("folder_a/existing.json").unwrap())
+					.token(token)
+					.item(crate::item::Item::Document {
+						etag: None,
+						last_modified: None,
+						content: Some("NEW_DOCUMENT_CONTENT".into()),
+						content_type: Some("NEW_DOCUMENT_CONTENT_TYPE".into())
+					})
+			)
+			.await
+			.status,
+		ResponseStatus::Performed(EngineResponse::UpdateSuccess(
+			"NEW_DOCUMENT_ETAG".into(),
+			time::OffsetDateTime::from_unix_timestamp(2000)
+				.unwrap()
+				.into()
+		))
+	);
+}
+
+#[tokio::test]
 async fn get_not_found() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database.create_user("username", &mut String::from("password"));
@@ -442,7 +504,9 @@ struct EmptyEngineForTests {}
 #[async_trait::async_trait]
 impl Engine for EmptyEngineForTests {
 	async fn perform(&mut self, request: &Request) -> EngineResponse {
-		if request.path == "folder_a/existing.json".try_into().unwrap() {
+		if (request.method == crate::Method::Get || request.method == crate::Method::Head)
+			&& request.path == "folder_a/existing.json".try_into().unwrap()
+		{
 			return EngineResponse::GetSuccessDocument(crate::item::Item::Document {
 				etag: Some("DOCUMENT_ETAG".into()),
 				last_modified: Some(
@@ -453,8 +517,28 @@ impl Engine for EmptyEngineForTests {
 				content: Some(b"DOCUMENT_CONTENT".into()),
 				content_type: Some("DOCUMENT_CONTENT_TYPE".into()),
 			});
-		} else if request.path == "folder_a/not_existing.json".try_into().unwrap() {
+		} else if (request.method == crate::Method::Get || request.method == crate::Method::Head)
+			&& request.path == "folder_a/not_existing.json".try_into().unwrap()
+		{
 			return EngineResponse::NotFound;
+		} else if request.method == crate::Method::Put
+			&& request.path == "folder_a/existing.json".try_into().unwrap()
+		{
+			return EngineResponse::UpdateSuccess(
+				"NEW_DOCUMENT_ETAG".into(),
+				time::OffsetDateTime::from_unix_timestamp(2000)
+					.unwrap()
+					.into(),
+			);
+		} else if request.method == crate::Method::Put
+			&& request.path == "folder_a/not_existing.json".try_into().unwrap()
+		{
+			return EngineResponse::CreateSuccess(
+				"DOCUMENT_ETAG".into(),
+				time::OffsetDateTime::from_unix_timestamp(1000)
+					.unwrap()
+					.into(),
+			);
 		}
 
 		return EngineResponse::InternalError(String::from(EMPTY_ENGINE_PASS_RESPONSE));

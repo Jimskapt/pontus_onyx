@@ -58,7 +58,9 @@ impl BearerAccess {
 	pub fn check_request(&self, request: &Request) -> Result<(), RequestValidityError> {
 		self.right.method_check(&request.method)?;
 
-		if request
+		if self.module == "*" {
+			return Ok(());
+		} else if request
 			.path
 			.starts_with(&(self.module.clone() + "/").try_into().unwrap())
 		{

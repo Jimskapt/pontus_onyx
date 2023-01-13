@@ -1,35 +1,48 @@
 [package]
 name = "pontus_onyx"
-version = "0.19.0"
-authors = ["Jimskapt"]
-edition = "2021"
 description = "A remoteStorage server and client library"
 keywords = ["remotestorage", "database", "local-first", "http", "rest"]
 categories = ["database", "database-implementations", "web-programming", "wasm"]
-license = "MIT"
-readme = "../README.md"
-repository = "https://github.com/Jimskapt/pontus_onyx"
 documentation = "https://docs.rs/pontus_onyx/"
+
+[package.version]
+workspace = true
+
+[package.authors]
+workspace = true
+
+[package.edition]
+workspace = true
+
+[package.license]
+workspace = true
+
+[package.readme]
+workspace = true
+
+[package.repository]
+workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 log = "0.4.17"
 rand = "0.8.5"
-regex = "1.7.0"
-async-trait = "0.1.60"
+regex = "1.7.1"
+async-trait = "0.1.61"
 derivative = "2.2.0"
 anyhow = "1.0.68"
 time = { version = "0.3.17", features = ["serde"] }
 serde = { version = "1.0.152", features = ["derive"] }
 uuid = { version = "1.2.2", features = ["v4"] }
 zeroize = { version = "1.5.7", features = ["derive"] }
-tokio = { version = "1.23.0", features = ["rt", "macros"] }
+tokio = { version = "1.24.1", features = ["rt", "macros"] }
 
 actix-web = { version = "4.2.1", optional = true }
 futures-core = { version = "0.3.25", optional = true }
 futures = { version = "0.3.25", optional = true }
 serde_json = { version = "1.0.91", optional = true }
+actix-http = { version = "3.2.2", optional = true }
 
 [features]
-actix_server = ["dep:actix-web", "dep:futures-core", "dep:serde_json", "dep:futures"]
+actix_server = ["dep:actix-web", "dep:actix-http", "dep:futures-core", "dep:serde_json", "dep:futures"]
