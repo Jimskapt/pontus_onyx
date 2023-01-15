@@ -16,7 +16,7 @@ pub enum Item {
 	Document {
 		etag: Option<Etag>,
 		last_modified: Option<LastModified>,
-		#[derivative(Debug = "ignore")]
+		#[derivative(Debug(format_with = "hidden_content"))]
 		content: Option<Content>,
 		content_type: Option<ContentType>,
 	},
@@ -91,4 +91,8 @@ impl Item {
 			Self::Folder { last_modified, .. } => last_modified.clone(),
 		}
 	}
+}
+
+fn hidden_content(_: &Option<Content>, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+	f.write_str("[hidden]")
 }

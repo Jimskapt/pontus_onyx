@@ -102,6 +102,8 @@ impl<E: Engine> Database<E> {
 	pub async fn perform(&mut self, request: impl Into<crate::Request>) -> Response {
 		let request = request.into();
 
+		log::info!("performing {request:?}");
+
 		let status = match self.is_allowed(&request) {
 			Ok(()) => {
 				if (request.method == Method::Put || request.method == Method::Delete)
@@ -123,9 +125,11 @@ impl<E: Engine> Database<E> {
 					item: None,
 					limits: vec![],
 					token: None,
-					origin: String::from("internal"),
+					origin: crate::security::Origin::from("database_internal"),
 				};
 				let get_response = self.engine.perform(&get_request).await;
+
+				log::debug!("engine reponse : {get_response:?}");
 
 				if let EngineResponse::NotFound = get_response {
 					if request.method == Method::Put
@@ -227,7 +231,9 @@ impl<E: Engine> Database<E> {
 											matches!(limit, crate::Limit::IfMatch(_))
 												|| matches!(limit, crate::Limit::IfNoneMatch(_))
 										}) {
-											Some(ResponseStatus::Performed(EngineResponse::NotFound))
+											Some(ResponseStatus::Performed(
+												EngineResponse::NotFound,
+											))
 										} else {
 											None
 										}
@@ -279,7 +285,7 @@ impl<E: Engine> Database<E> {
 
 								ResponseStatus::Performed(engine_response)
 							}
-						},
+						}
 					}
 				}
 			}

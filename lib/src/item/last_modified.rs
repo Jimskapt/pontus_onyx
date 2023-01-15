@@ -1,4 +1,14 @@
-#[derive(Debug, PartialEq, Clone, PartialOrd, Eq, Ord, serde::Serialize, serde::Deserialize)]
+#[derive(
+	derivative::Derivative,
+	PartialEq,
+	Clone,
+	PartialOrd,
+	Eq,
+	Ord,
+	serde::Serialize,
+	serde::Deserialize,
+)]
+#[derivative(Debug = "transparent")]
 pub struct LastModified(time::OffsetDateTime);
 
 impl LastModified {

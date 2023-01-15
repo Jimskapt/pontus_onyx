@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use pontus_onyx::item::{Item, Path, ROOT_PATH};
+use pontus_onyx::{
+	item::{Item, Path, ROOT_PATH},
+	security::Origin,
+};
 
 // CUSTOM SETTINGS (please edit following) :
 use crate::MemoryEngine as ThisEngine;
@@ -50,7 +53,9 @@ async fn get_empty_path() {
 	);
 
 	assert_eq!(
-		tb.engine.perform(&Request::get(&ROOT_PATH)).await,
+		tb.engine
+			.perform(&Request::get(&ROOT_PATH, Origin::from("test")))
+			.await,
 		EngineResponse::GetSuccessFolder {
 			folder: root.get(&ROOT_PATH).unwrap().clone(),
 			children,
@@ -72,7 +77,9 @@ async fn get_folder_a() {
 	);
 
 	assert_eq!(
-		tb.engine.perform(&Request::get(&folder_a)).await,
+		tb.engine
+			.perform(&Request::get(&folder_a, Origin::from("test")))
+			.await,
 		EngineResponse::GetSuccessFolder {
 			folder: root.get(&folder_a).unwrap().clone(),
 			children,
@@ -88,7 +95,9 @@ async fn get_folder_a_document() {
 	let folder_a_document = Path::try_from("folder_a/document.txt").unwrap();
 
 	assert_eq!(
-		tb.engine.perform(&Request::get(&folder_a_document)).await,
+		tb.engine
+			.perform(&Request::get(&folder_a_document, Origin::from("test")))
+			.await,
 		EngineResponse::GetSuccessDocument(root.get(&folder_a_document).unwrap().clone()),
 	);
 }
@@ -104,7 +113,9 @@ async fn get_folder_public() {
 	children.insert(folder_c.clone(), root.get(&folder_c).unwrap().clone());
 
 	assert_eq!(
-		tb.engine.perform(&Request::get(&folder_public)).await,
+		tb.engine
+			.perform(&Request::get(&folder_public, Origin::from("test")))
+			.await,
 		EngineResponse::GetSuccessFolder {
 			folder: root.get(&folder_public).unwrap().clone(),
 			children,
@@ -121,7 +132,7 @@ async fn get_folder_public_document() {
 
 	assert_eq!(
 		tb.engine
-			.perform(&Request::get(&folder_public_document))
+			.perform(&Request::get(&folder_public_document, Origin::from("test")))
 			.await,
 		EngineResponse::GetSuccessDocument(root.get(&folder_public_document).unwrap().clone()),
 	);
@@ -134,7 +145,9 @@ async fn get_not_existing_folder() {
 	let not_existing_path = Path::try_from("not_existing/").unwrap();
 
 	assert_eq!(
-		tb.engine.perform(&Request::get(&not_existing_path)).await,
+		tb.engine
+			.perform(&Request::get(&not_existing_path, Origin::from("test")))
+			.await,
 		EngineResponse::NotFound,
 	);
 }
@@ -146,7 +159,9 @@ async fn get_not_existing_document() {
 	let not_existing_path = Path::try_from("folder_a/not_existing.txt").unwrap();
 
 	assert_eq!(
-		tb.engine.perform(&Request::get(&not_existing_path)).await,
+		tb.engine
+			.perform(&Request::get(&not_existing_path, Origin::from("test")))
+			.await,
 		EngineResponse::NotFound,
 	);
 }
@@ -158,7 +173,9 @@ async fn get_not_existing_folder_and_document() {
 	let not_existing_path = Path::try_from("not_existing/not_existing.txt").unwrap();
 
 	assert_eq!(
-		tb.engine.perform(&Request::get(&not_existing_path)).await,
+		tb.engine
+			.perform(&Request::get(&not_existing_path, Origin::from("test")))
+			.await,
 		EngineResponse::NotFound,
 	);
 }
@@ -174,7 +191,9 @@ async fn head_folder_a() {
 	let folder_a = Path::try_from("folder_a/").unwrap();
 
 	assert_eq!(
-		tb.engine.perform(&Request::head(&folder_a)).await,
+		tb.engine
+			.perform(&Request::head(&folder_a, Origin::from("test")))
+			.await,
 		EngineResponse::GetSuccessFolder {
 			folder: root.get(&folder_a).unwrap().clone(),
 			children: BTreeMap::new(),
@@ -190,7 +209,9 @@ async fn head_folder_a_document() {
 	let folder_a_document = Path::try_from("folder_a/document.txt").unwrap();
 
 	assert_eq!(
-		tb.engine.perform(&Request::head(&folder_a_document)).await,
+		tb.engine
+			.perform(&Request::head(&folder_a_document, Origin::from("test")))
+			.await,
 		EngineResponse::GetSuccessDocument(
 			root.get(&folder_a_document)
 				.unwrap()
@@ -206,7 +227,9 @@ async fn head_not_existing_document() {
 	let not_existing_path = Path::try_from("folder_a/not_existing.txt").unwrap();
 
 	assert_eq!(
-		tb.engine.perform(&Request::head(&not_existing_path)).await,
+		tb.engine
+			.perform(&Request::head(&not_existing_path, Origin::from("test")))
+			.await,
 		EngineResponse::NotFound,
 	);
 }
@@ -230,12 +253,14 @@ async fn put_new_document_in_existing_folder() {
 
 	let response = tb
 		.engine
-		.perform(&Request::put(&new_document_path).item(Item::Document {
-			etag: None,
-			last_modified: None,
-			content: Some(b"new_document content".into()),
-			content_type: Some("text/html".into()),
-		}))
+		.perform(
+			&Request::put(&new_document_path, Origin::from("test")).item(Item::Document {
+				etag: None,
+				last_modified: None,
+				content: Some(b"new_document content".into()),
+				content_type: Some("text/html".into()),
+			}),
+		)
 		.await;
 
 	assert!(response.has_muted_database());
@@ -279,12 +304,14 @@ async fn put_new_document_in_new_folder() {
 
 	let response = tb
 		.engine
-		.perform(&Request::put(&new_document_path).item(Item::Document {
-			etag: None,
-			last_modified: None,
-			content: Some(b"new_document content".into()),
-			content_type: Some("text/html".into()),
-		}))
+		.perform(
+			&Request::put(&new_document_path, Origin::from("test")).item(Item::Document {
+				etag: None,
+				last_modified: None,
+				content: Some(b"new_document content".into()),
+				content_type: Some("text/html".into()),
+			}),
+		)
 		.await;
 
 	assert!(response.has_muted_database());
@@ -309,12 +336,14 @@ async fn put_new_content_on_existing_document() {
 
 	let response = tb
 		.engine
-		.perform(&Request::put(&document_path).item(Item::Document {
-			etag: None,
-			last_modified: None,
-			content: Some(b"document new content".into()),
-			content_type: Some("text/html".into()),
-		}))
+		.perform(
+			&Request::put(&document_path, Origin::from("test")).item(Item::Document {
+				etag: None,
+				last_modified: None,
+				content: Some(b"document new content".into()),
+				content_type: Some("text/html".into()),
+			}),
+		)
 		.await;
 
 	assert!(response.has_muted_database());
@@ -381,12 +410,14 @@ async fn put_new_content_type_on_existing_document() {
 
 	let response = tb
 		.engine
-		.perform(&Request::put(&document_path).item(Item::Document {
-			etag: None,
-			last_modified: None,
-			content: Some(b"My Document Content Here (folder a)".into()),
-			content_type: Some("text/plain".into()),
-		}))
+		.perform(
+			&Request::put(&document_path, Origin::from("test")).item(Item::Document {
+				etag: None,
+				last_modified: None,
+				content: Some(b"My Document Content Here (folder a)".into()),
+				content_type: Some("text/plain".into()),
+			}),
+		)
 		.await;
 
 	assert!(response.has_muted_database());
@@ -457,7 +488,10 @@ async fn delete_on_single_existing_document() {
 		assert!(root.get(&document_path).is_some());
 	}
 
-	let response = tb.engine.perform(&Request::delete(&document_path)).await;
+	let response = tb
+		.engine
+		.perform(&Request::delete(&document_path, Origin::from("test")))
+		.await;
 
 	assert!(response.has_muted_database());
 	assert_eq!(response, pontus_onyx::EngineResponse::DeleteSuccess);
@@ -486,7 +520,10 @@ async fn delete_on_not_single_existing_document() {
 		assert!(root.get(&other_document_path).is_some());
 	}
 
-	let response = tb.engine.perform(&Request::delete(&document_path)).await;
+	let response = tb
+		.engine
+		.perform(&Request::delete(&document_path, Origin::from("test")))
+		.await;
 
 	assert!(response.has_muted_database());
 	assert_eq!(response, pontus_onyx::EngineResponse::DeleteSuccess);
@@ -512,7 +549,10 @@ async fn delete_on_not_existing_document() {
 		assert!(root.get(&document_path).is_none());
 	}
 
-	let response = tb.engine.perform(&Request::delete(&document_path)).await;
+	let response = tb
+		.engine
+		.perform(&Request::delete(&document_path, Origin::from("test")))
+		.await;
 
 	assert!(!response.has_muted_database());
 	assert_eq!(response, pontus_onyx::EngineResponse::NotFound);
@@ -539,7 +579,7 @@ async fn full_engine_test() {
 
 	let response = engine
 		.perform(
-			&Request::put(&document1_path).item(
+			&Request::put(&document1_path, Origin::from("test")).item(
 				Item::document()
 					.content(b"qrfsefqergt")
 					.content_type("text/plain"),
@@ -550,7 +590,7 @@ async fn full_engine_test() {
 
 	let response = engine
 		.perform(
-			&Request::put(&document2_path).item(
+			&Request::put(&document2_path, Origin::from("test")).item(
 				Item::document()
 					.content(b"document")
 					.content_type("text/html"),
@@ -572,7 +612,7 @@ async fn full_engine_test() {
 
 	let response = engine
 		.perform(
-			&Request::put(&document2_path).item(
+			&Request::put(&document2_path, Origin::from("test")).item(
 				Item::document()
 					.content(b"ftcnhcxdfsg")
 					.content_type("text/plain"),
@@ -597,7 +637,9 @@ async fn full_engine_test() {
 		}
 	}
 
-	let response = engine.perform(&Request::get(&document1_path)).await;
+	let response = engine
+		.perform(&Request::get(&document1_path, Origin::from("test")))
+		.await;
 
 	{
 		let root = engine.root_for_tests();
@@ -607,7 +649,9 @@ async fn full_engine_test() {
 		);
 	}
 
-	let response = engine.perform(&Request::delete(&document2_path)).await;
+	let response = engine
+		.perform(&Request::delete(&document2_path, Origin::from("test")))
+		.await;
 	assert!(response.has_muted_database());
 
 	{
@@ -620,7 +664,9 @@ async fn full_engine_test() {
 		assert!(root.get(&ROOT_PATH).is_some());
 	}
 
-	let response = engine.perform(&Request::delete(&document1_path)).await;
+	let response = engine
+		.perform(&Request::delete(&document1_path, Origin::from("test")))
+		.await;
 	assert!(response.has_muted_database());
 
 	{

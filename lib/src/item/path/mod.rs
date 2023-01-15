@@ -1,7 +1,17 @@
 #[cfg(test)]
 pub mod tests;
 
-#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(
+	derivative::Derivative,
+	PartialEq,
+	Clone,
+	PartialOrd,
+	Ord,
+	Eq,
+	serde::Serialize,
+	serde::Deserialize,
+)]
+#[derivative(Debug = "transparent")]
 pub struct Path(Vec<PathPart>);
 
 impl Path {

@@ -23,10 +23,10 @@ impl From<Response> for actix_web::HttpResponse {
 		response.insert_header((actix_web::http::header::CACHE_CONTROL, "no-cache"));
 		response.insert_header((
 			actix_web::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
-			internal_response.request.origin.clone(),
+			internal_response.request.origin.0.clone(),
 		));
 
-		if internal_response.request.origin != "*" {
+		if internal_response.request.origin != crate::security::Origin::from("*") {
 			response.insert_header((actix_web::http::header::VARY, "Origin"));
 		}
 

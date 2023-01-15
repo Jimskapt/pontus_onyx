@@ -1,7 +1,7 @@
 #[cfg(feature = "actix_server")]
 use actix_web::HttpMessage;
 
-use crate::{item::Path, Limit, Method};
+use crate::{item::Path, security::Origin, Limit, Method};
 
 #[derive(Debug, PartialEq)]
 pub struct Request {
@@ -10,31 +10,35 @@ pub struct Request {
 	pub token: Option<crate::security::Token>,
 	pub item: Option<crate::item::Item>,
 	pub limits: Vec<Limit>,
-	pub origin: String,
+	pub origin: Origin,
 }
 
 impl Request {
-	pub fn new(new_method: impl Into<Method>, new_path: impl AsRef<Path>) -> Self {
+	pub fn new(
+		new_method: impl Into<Method>,
+		new_path: impl AsRef<Path>,
+		origin: impl Into<Origin>,
+	) -> Self {
 		Self {
 			method: new_method.into(),
 			path: new_path.as_ref().clone(),
 			token: None,
 			item: None,
 			limits: vec![],
-			origin: String::new(),
+			origin: origin.into(),
 		}
 	}
-	pub fn head(new_path: impl AsRef<Path>) -> Self {
-		Self::new(Method::Head, new_path)
+	pub fn head(new_path: impl AsRef<Path>, origin: impl Into<Origin>) -> Self {
+		Self::new(Method::Head, new_path, origin)
 	}
-	pub fn get(new_path: impl AsRef<Path>) -> Self {
-		Self::new(Method::Get, new_path)
+	pub fn get(new_path: impl AsRef<Path>, origin: impl Into<Origin>) -> Self {
+		Self::new(Method::Get, new_path, origin)
 	}
-	pub fn put(new_path: impl AsRef<Path>) -> Self {
-		Self::new(Method::Put, new_path)
+	pub fn put(new_path: impl AsRef<Path>, origin: impl Into<Origin>) -> Self {
+		Self::new(Method::Put, new_path, origin)
 	}
-	pub fn delete(new_path: impl AsRef<Path>) -> Self {
-		Self::new(Method::Delete, new_path)
+	pub fn delete(new_path: impl AsRef<Path>, origin: impl Into<Origin>) -> Self {
+		Self::new(Method::Delete, new_path, origin)
 	}
 	pub fn token(mut self, token: impl Into<crate::security::Token>) -> Self {
 		self.token = Some(token.into());
@@ -51,7 +55,7 @@ impl Request {
 
 		return self;
 	}
-	pub fn origin(mut self, new_origin: impl Into<String>) -> Self {
+	pub fn origin(mut self, new_origin: impl Into<Origin>) -> Self {
 		self.origin = new_origin.into();
 
 		return self;
@@ -68,7 +72,7 @@ fn full_constructor() {
 	const CONTENT: &[u8] = br#"{"test":"content"}"#;
 	const CONTENT_TYPE: &str = "application/json";
 
-	let request = Request::get(Path::try_from(PATH).unwrap())
+	let request = Request::get(Path::try_from(PATH).unwrap(), ORIGIN)
 		.token(TOKEN)
 		.item(
 			crate::item::Item::document()
@@ -76,8 +80,7 @@ fn full_constructor() {
 				.content_type(CONTENT_TYPE),
 		)
 		.add_limit(Limit::if_match(IF_MATCH))
-		.add_limit(Limit::if_none_match(IF_NONE_MATCH))
-		.origin(ORIGIN);
+		.add_limit(Limit::if_none_match(IF_NONE_MATCH));
 
 	assert_eq!(
 		request,
@@ -95,7 +98,7 @@ fn full_constructor() {
 				Limit::IfMatch(crate::item::Etag::from(IF_MATCH)),
 				Limit::IfNoneMatch(crate::item::Etag::from(IF_NONE_MATCH)),
 			],
-			origin: String::from(ORIGIN)
+			origin: Origin::from(ORIGIN),
 		}
 	);
 }
@@ -163,12 +166,18 @@ pub async fn from_actix_request(
 	let origin = {
 		if let Some(origin) = actix_request.headers().get(actix_web::http::header::ORIGIN) {
 			if let Ok(origin) = origin.to_str() {
-				String::from(origin)
+				Origin::from(origin)
 			} else {
-				String::new()
+				return Err(anyhow::anyhow!(
+					"can not convert origin header value in string"
+				));
 			}
 		} else {
-			String::new()
+			if cfg!(debug_assertions) {
+				Origin::from("unknown (only allowed when running server in development mode for test purposes)")
+			} else {
+				return Err(anyhow::anyhow!("missing origin header"));
+			}
 		}
 	};
 
@@ -215,7 +224,7 @@ pub async fn from_actix_request(
 			}),
 			Err(err) => Err(err.into()),
 		},
-		Err(err) => todo!(),
+		Err(err) => Err(anyhow::anyhow!(err.to_string())),
 	}
 }
 
@@ -228,6 +237,7 @@ async fn convert_from_actix_request() {
 	const IF_NONE_MATCH: &str = "*";
 	const CONTENT: &[u8] = b"Hello, world ?";
 	const CONTENT_TYPE: &str = "text/plain";
+	const ORIGIN: &str = "test";
 
 	let actix_request = actix_web::test::TestRequest::put()
 		.uri(&format!("/storage{REQUEST_PATH}"))
@@ -235,6 +245,7 @@ async fn convert_from_actix_request() {
 			actix_web::http::header::AUTHORIZATION,
 			format!("Bearer {TOKEN}"),
 		))
+		.insert_header((actix_web::http::header::ORIGIN, ORIGIN))
 		.param("path", REQUEST_PATH)
 		.insert_header((actix_web::http::header::CONTENT_TYPE, CONTENT_TYPE))
 		.insert_header((actix_web::http::header::IF_MATCH, format!("\"{IF_MATCH}\"")))
@@ -265,7 +276,7 @@ async fn convert_from_actix_request() {
 				content: Some(crate::item::Content::from(CONTENT)),
 				content_type: Some(crate::item::ContentType::from(CONTENT_TYPE))
 			}),
-			origin: String::from("test"),
+			origin: Origin::from(ORIGIN),
 		}
 	);
 }

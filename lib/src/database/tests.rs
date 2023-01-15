@@ -1,6 +1,9 @@
 use std::collections::BTreeMap;
 
-use crate::{item::Path, AccessError, Database, Engine, EngineResponse, Request, ResponseStatus};
+use crate::{
+	item::Path, security::Origin, AccessError, Database, Engine, EngineResponse, Request,
+	ResponseStatus,
+};
 
 #[test]
 fn generate_token() {
@@ -62,7 +65,10 @@ fn generate_token() {
 async fn should_not_list_public() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as Engine>::new_for_tests())
-			.perform(Request::get(Path::try_from("public/").unwrap()))
+			.perform(Request::get(
+				Path::try_from("public/").unwrap(),
+				Origin::from("test")
+			))
 			.await
 			.status,
 		ResponseStatus::Unauthorized(AccessError::CanNotListPublic)
@@ -73,7 +79,10 @@ async fn should_not_list_public() {
 async fn should_not_list_public_subfolder() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as Engine>::new_for_tests())
-			.perform(Request::get(Path::try_from("public/folder/").unwrap()))
+			.perform(Request::get(
+				Path::try_from("public/folder/").unwrap(),
+				Origin::from("test")
+			))
 			.await
 			.status,
 		ResponseStatus::Unauthorized(AccessError::CanNotListPublic)
@@ -84,7 +93,10 @@ async fn should_not_list_public_subfolder() {
 async fn should_pass_public_get() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as Engine>::new_for_tests())
-			.perform(Request::get(Path::try_from("public/document.txt").unwrap()))
+			.perform(Request::get(
+				Path::try_from("public/document.txt").unwrap(),
+				Origin::from("test")
+			))
 			.await
 			.status,
 		ResponseStatus::Performed(EngineResponse::InternalError(String::from(
@@ -98,7 +110,8 @@ async fn should_pass_public_get_subfolder() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as Engine>::new_for_tests())
 			.perform(Request::get(
-				Path::try_from("public/folder/document.txt").unwrap()
+				Path::try_from("public/folder/document.txt").unwrap(),
+				Origin::from("test")
 			))
 			.await
 			.status,
@@ -112,7 +125,10 @@ async fn should_pass_public_get_subfolder() {
 async fn should_not_pass_without_token() {
 	assert_eq!(
 		Database::new(<EmptyEngineForTests as Engine>::new_for_tests())
-			.perform(Request::get(Path::try_from("folder_a/").unwrap()))
+			.perform(Request::get(
+				Path::try_from("folder_a/").unwrap(),
+				Origin::from("test")
+			))
 			.await
 			.status,
 		ResponseStatus::Unauthorized(AccessError::MissingToken)
@@ -129,7 +145,10 @@ async fn should_pass_with_right_token() {
 
 	assert_eq!(
 		database
-			.perform(Request::get(Path::try_from("folder_a/").unwrap()).token(token))
+			.perform(
+				Request::get(Path::try_from("folder_a/").unwrap(), Origin::from("test"))
+					.token(token)
+			)
 			.await
 			.status,
 		ResponseStatus::Performed(EngineResponse::InternalError(String::from(
@@ -148,7 +167,10 @@ async fn should_not_pass_with_wrong_token() {
 
 	assert_eq!(
 		database
-			.perform(Request::get(Path::try_from("folder_a/").unwrap()).token(token))
+			.perform(
+				Request::get(Path::try_from("folder_a/").unwrap(), Origin::from("test"))
+					.token(token)
+			)
 			.await
 			.status,
 		ResponseStatus::Unauthorized(crate::AccessError::NotValidToken(vec![
@@ -170,14 +192,17 @@ async fn should_not_pass_with_token_but_wrong_method() {
 	assert_eq!(
 		database
 			.perform(
-				Request::put(Path::try_from("folder_a/document.json").unwrap())
-					.token(token)
-					.item(crate::item::Item::Document {
-						etag: None,
-						last_modified: None,
-						content: Some(br#"{"key": "value"}"#.into()),
-						content_type: Some("application/json".into())
-					})
+				Request::put(
+					Path::try_from("folder_a/document.json").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.item(crate::item::Item::Document {
+					etag: None,
+					last_modified: None,
+					content: Some(br#"{"key": "value"}"#.into()),
+					content_type: Some("application/json".into())
+				})
 			)
 			.await
 			.status,
@@ -200,9 +225,12 @@ async fn get_no_if_match() {
 	assert_eq!(
 		database
 			.perform(
-				Request::get(Path::try_from("folder_a/existing.json").unwrap())
-					.token(token)
-					.add_limit(crate::Limit::IfMatch("WRONG_ETAG".into()))
+				Request::get(
+					Path::try_from("folder_a/existing.json").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.add_limit(crate::Limit::IfMatch("WRONG_ETAG".into()))
 			)
 			.await
 			.status,
@@ -221,9 +249,12 @@ async fn get_if_match() {
 	assert_eq!(
 		database
 			.perform(
-				Request::get(Path::try_from("folder_a/existing.json").unwrap())
-					.token(token)
-					.add_limit(crate::Limit::IfMatch("DOCUMENT_ETAG".into()))
+				Request::get(
+					Path::try_from("folder_a/existing.json").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.add_limit(crate::Limit::IfMatch("DOCUMENT_ETAG".into()))
 			)
 			.await
 			.status,
@@ -253,9 +284,12 @@ async fn get_if_none_match() {
 	assert_eq!(
 		database
 			.perform(
-				Request::get(Path::try_from("folder_a/existing.json").unwrap())
-					.token(token)
-					.add_limit(crate::Limit::IfNoneMatch("DOCUMENT_ETAG".into()))
+				Request::get(
+					Path::try_from("folder_a/existing.json").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.add_limit(crate::Limit::IfNoneMatch("DOCUMENT_ETAG".into()))
 			)
 			.await
 			.status,
@@ -274,9 +308,12 @@ async fn get_no_if_none_match() {
 	assert_eq!(
 		database
 			.perform(
-				Request::get(Path::try_from("folder_a/existing.json").unwrap())
-					.token(token)
-					.add_limit(crate::Limit::IfNoneMatch("ANOTHER_DOCUMENT_ETAG".into()))
+				Request::get(
+					Path::try_from("folder_a/existing.json").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.add_limit(crate::Limit::IfNoneMatch("ANOTHER_DOCUMENT_ETAG".into()))
 			)
 			.await
 			.status,
@@ -306,9 +343,12 @@ async fn get_if_none_match_all() {
 	assert_eq!(
 		database
 			.perform(
-				Request::get(Path::try_from("folder_a/existing.json").unwrap())
-					.token(token)
-					.add_limit(crate::Limit::IfNoneMatch("*".into()))
+				Request::get(
+					Path::try_from("folder_a/existing.json").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.add_limit(crate::Limit::IfNoneMatch("*".into()))
 			)
 			.await
 			.status,
@@ -327,14 +367,17 @@ async fn put_content_not_changed() {
 	assert_eq!(
 		database
 			.perform(
-				Request::put(Path::try_from("folder_a/existing.json").unwrap())
-					.token(token)
-					.item(crate::item::Item::Document {
-						etag: None,
-						last_modified: None,
-						content: Some("DOCUMENT_CONTENT".into()),
-						content_type: Some("DOCUMENT_CONTENT_TYPE".into())
-					})
+				Request::put(
+					Path::try_from("folder_a/existing.json").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.item(crate::item::Item::Document {
+					etag: None,
+					last_modified: None,
+					content: Some("DOCUMENT_CONTENT".into()),
+					content_type: Some("DOCUMENT_CONTENT_TYPE".into())
+				})
 			)
 			.await
 			.status,
@@ -353,14 +396,17 @@ async fn put_folder_path() {
 	assert_eq!(
 		database
 			.perform(
-				Request::put(Path::try_from("folder_a/folder_aa/").unwrap())
-					.token(token)
-					.item(crate::item::Item::Document {
-						etag: None,
-						last_modified: None,
-						content: Some("DOCUMENT_CONTENT".into()),
-						content_type: Some("DOCUMENT_CONTENT_TYPE".into())
-					})
+				Request::put(
+					Path::try_from("folder_a/folder_aa/").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.item(crate::item::Item::Document {
+					etag: None,
+					last_modified: None,
+					content: Some("DOCUMENT_CONTENT".into()),
+					content_type: Some("DOCUMENT_CONTENT_TYPE".into())
+				})
 			)
 			.await
 			.status,
@@ -379,12 +425,15 @@ async fn put_folder_item() {
 	assert_eq!(
 		database
 			.perform(
-				Request::put(Path::try_from("folder_a/folder_aa").unwrap())
-					.token(token)
-					.item(crate::item::Item::Folder {
-						etag: None,
-						last_modified: None,
-					})
+				Request::put(
+					Path::try_from("folder_a/folder_aa").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.item(crate::item::Item::Folder {
+					etag: None,
+					last_modified: None,
+				})
 			)
 			.await
 			.status,
@@ -402,7 +451,13 @@ async fn put_none_item() {
 
 	assert_eq!(
 		database
-			.perform(Request::put(Path::try_from("folder_a/document.txt").unwrap()).token(token))
+			.perform(
+				Request::put(
+					Path::try_from("folder_a/document.txt").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+			)
 			.await
 			.status,
 		ResponseStatus::MissingRequestItem
@@ -420,14 +475,17 @@ async fn put_not_existing() {
 	assert_eq!(
 		database
 			.perform(
-				Request::put(Path::try_from("folder_a/not_existing.json").unwrap())
-					.token(token)
-					.item(crate::item::Item::Document {
-						etag: None,
-						last_modified: None,
-						content: Some("DOCUMENT_CONTENT".into()),
-						content_type: Some("DOCUMENT_CONTENT_TYPE".into())
-					})
+				Request::put(
+					Path::try_from("folder_a/not_existing.json").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.item(crate::item::Item::Document {
+					etag: None,
+					last_modified: None,
+					content: Some("DOCUMENT_CONTENT".into()),
+					content_type: Some("DOCUMENT_CONTENT_TYPE".into())
+				})
 			)
 			.await
 			.status,
@@ -451,14 +509,17 @@ async fn put_existing() {
 	assert_eq!(
 		database
 			.perform(
-				Request::put(Path::try_from("folder_a/existing.json").unwrap())
-					.token(token)
-					.item(crate::item::Item::Document {
-						etag: None,
-						last_modified: None,
-						content: Some("NEW_DOCUMENT_CONTENT".into()),
-						content_type: Some("NEW_DOCUMENT_CONTENT_TYPE".into())
-					})
+				Request::put(
+					Path::try_from("folder_a/existing.json").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.item(crate::item::Item::Document {
+					etag: None,
+					last_modified: None,
+					content: Some("NEW_DOCUMENT_CONTENT".into()),
+					content_type: Some("NEW_DOCUMENT_CONTENT_TYPE".into())
+				})
 			)
 			.await
 			.status,
@@ -482,14 +543,17 @@ async fn get_not_found() {
 	assert_eq!(
 		database
 			.perform(
-				Request::get(Path::try_from("folder_a/not_existing.json").unwrap())
-					.token(token)
-					.item(crate::item::Item::Document {
-						etag: None,
-						last_modified: None,
-						content: Some("DOCUMENT_CONTENT".into()),
-						content_type: Some("DOCUMENT_CONTENT_TYPE".into())
-					})
+				Request::get(
+					Path::try_from("folder_a/not_existing.json").unwrap(),
+					Origin::from("test")
+				)
+				.token(token)
+				.item(crate::item::Item::Document {
+					etag: None,
+					last_modified: None,
+					content: Some("DOCUMENT_CONTENT".into()),
+					content_type: Some("DOCUMENT_CONTENT_TYPE".into())
+				})
 			)
 			.await
 			.status,

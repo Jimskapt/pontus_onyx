@@ -30,6 +30,8 @@ impl MemoryEngine {
 #[async_trait::async_trait]
 impl pontus_onyx::Engine for MemoryEngine {
 	async fn perform(&mut self, request: &pontus_onyx::Request) -> EngineResponse {
+		log::debug!("performing {request:?}");
+
 		if request.method == Method::Put {
 			let new_etag = pontus_onyx::item::Etag::from(format!("{}", uuid::Uuid::new_v4()));
 			let new_last_modified =
@@ -62,10 +64,16 @@ impl pontus_onyx::Engine for MemoryEngine {
 			};
 
 			if let Some(parent) = path.parent() {
-				self.perform(&pontus_onyx::Request::put(parent).item(Item::Folder {
-					etag: None,
-					last_modified: None,
-				}))
+				self.perform(
+					&pontus_onyx::Request::put(
+						parent,
+						pontus_onyx::security::Origin::from("memory_engine_internals"),
+					)
+					.item(Item::Folder {
+						etag: None,
+						last_modified: None,
+					}),
+				)
 				.await;
 			}
 
@@ -80,10 +88,19 @@ impl pontus_onyx::Engine for MemoryEngine {
 				if let EngineResponse::GetSuccessFolder {
 					folder: _,
 					children,
-				} = self.perform(&pontus_onyx::Request::get(&parent)).await
+				} = self
+					.perform(&pontus_onyx::Request::get(
+						&parent,
+						pontus_onyx::security::Origin::from("memory_engine_internals"),
+					))
+					.await
 				{
 					if children.is_empty() {
-						self.perform(&pontus_onyx::Request::delete(parent)).await;
+						self.perform(&pontus_onyx::Request::delete(
+							parent,
+							pontus_onyx::security::Origin::from("memory_engine_internals"),
+						))
+						.await;
 					}
 				}
 			}

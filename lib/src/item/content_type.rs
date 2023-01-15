@@ -1,4 +1,5 @@
-#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(derivative::Derivative, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
+#[derivative(Debug = "transparent")]
 pub struct ContentType(String);
 
 impl ContentType {

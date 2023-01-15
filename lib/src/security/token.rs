@@ -1,6 +1,19 @@
 use crate::security::BearerAccess;
 
-#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, serde::Serialize, serde::Deserialize)]
+#[cfg(test)]
+use crate::{item::Path, security::Origin};
+
+#[derive(
+	derivative::Derivative,
+	PartialEq,
+	Clone,
+	PartialOrd,
+	Ord,
+	Eq,
+	serde::Serialize,
+	serde::Deserialize,
+)]
+#[derivative(Debug = "transparent")]
 pub struct Token(pub String);
 
 impl<T: Into<String>> From<T> for Token {
@@ -116,19 +129,22 @@ fn multiple_modules() {
 
 	assert_eq!(
 		token.check_request(&crate::Request::get(
-			crate::item::Path::try_from("folder_a/").unwrap()
+			Path::try_from("folder_a/").unwrap(),
+			Origin::from("test"),
 		)),
 		Ok(())
 	);
 	assert_eq!(
 		token.check_request(&crate::Request::get(
-			crate::item::Path::try_from("folder_b/").unwrap()
+			Path::try_from("folder_b/").unwrap(),
+			Origin::from("test"),
 		)),
 		Ok(())
 	);
 	assert_eq!(
 		token.check_request(&crate::Request::get(
-			crate::item::Path::try_from("folder_c/").unwrap()
+			Path::try_from("folder_c/").unwrap(),
+			Origin::from("test"),
 		)),
 		Err(vec![
 			crate::security::RequestValidityError::OutOfModuleScope,
@@ -149,37 +165,43 @@ fn joker_modules() {
 
 	assert_eq!(
 		token.check_request(&crate::Request::get(
-			crate::item::Path::try_from("folder_a/").unwrap()
+			Path::try_from("folder_a/").unwrap(),
+			Origin::from("test"),
 		)),
 		Ok(())
 	);
 	assert_eq!(
 		token.check_request(&crate::Request::get(
-			crate::item::Path::try_from("folder_b/").unwrap()
+			Path::try_from("folder_b/").unwrap(),
+			Origin::from("test"),
 		)),
 		Ok(())
 	);
 	assert_eq!(
 		token.check_request(&crate::Request::get(
-			crate::item::Path::try_from("folder_c/").unwrap()
+			Path::try_from("folder_c/").unwrap(),
+			Origin::from("test"),
 		)),
 		Ok(())
 	);
 	assert_eq!(
 		token.check_request(&crate::Request::get(
-			crate::item::Path::try_from("folder_d/").unwrap()
+			Path::try_from("folder_d/").unwrap(),
+			Origin::from("test"),
 		)),
 		Ok(())
 	);
 	assert_eq!(
 		token.check_request(&crate::Request::get(
-			crate::item::Path::try_from("folder_e/").unwrap()
+			Path::try_from("folder_e/").unwrap(),
+			Origin::from("test"),
 		)),
 		Ok(())
 	);
 	assert_eq!(
 		token.check_request(&crate::Request::get(
-			crate::item::Path::try_from("folder_f/").unwrap()
+			Path::try_from("folder_f/").unwrap(),
+			Origin::from("test"),
 		)),
 		Ok(())
 	);

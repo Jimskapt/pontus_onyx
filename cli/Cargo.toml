@@ -23,6 +23,9 @@ workspace = true
 pontus_onyx = { path = "../lib", features = ["actix_server"] }
 pontus_onyx_memory_engine = { path = "../memory_engine" }
 
-actix-web = { version = "4.2.1" }
-env_logger = "0.10.0"
+actix-web = "4.2.1"
 log = "0.4.17"
+rand = "0.8.5"
+toml = "0.5.10"
+serde = { version = "1.0.152", features = ["derive"] }
+simplelog = "0.12.0"

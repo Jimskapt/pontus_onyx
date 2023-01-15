@@ -1,5 +1,8 @@
 use crate::{security::RequestValidityError, Method, Request};
 
+#[cfg(test)]
+use crate::{item::Path, security::Origin};
+
 pub struct BearerAccess {
 	pub right: BearerAccessRight,
 	pub module: String,
@@ -87,28 +90,32 @@ fn check_request() {
 
 	assert_eq!(
 		bearer.check_request(&Request::get(
-			crate::item::Path::try_from("folder_a/").unwrap()
+			Path::try_from("folder_a/").unwrap(),
+			Origin::from("test"),
 		)),
 		Ok(())
 	);
 
 	assert_eq!(
 		bearer.check_request(&Request::get(
-			crate::item::Path::try_from("folder_a").unwrap()
+			Path::try_from("folder_a").unwrap(),
+			Origin::from("test"),
 		)),
 		Err(RequestValidityError::OutOfModuleScope)
 	);
 
 	assert_eq!(
 		bearer.check_request(&Request::get(
-			crate::item::Path::try_from("folder_b/").unwrap()
+			Path::try_from("folder_b/").unwrap(),
+			Origin::from("test"),
 		)),
 		Err(RequestValidityError::OutOfModuleScope)
 	);
 
 	assert_eq!(
 		bearer.check_request(&Request::get(
-			crate::item::Path::try_from("folder_b").unwrap()
+			Path::try_from("folder_b").unwrap(),
+			Origin::from("test"),
 		)),
 		Err(RequestValidityError::OutOfModuleScope)
 	);
