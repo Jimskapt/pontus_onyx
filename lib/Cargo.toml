@@ -29,14 +29,14 @@ workspace = true
 log = "0.4.17"
 rand = "0.8.5"
 regex = "1.7.1"
-async-trait = "0.1.61"
+async-trait = "0.1.62"
 derivative = "2.2.0"
 anyhow = "1.0.68"
 time = { version = "0.3.17", features = ["serde"] }
 serde = { version = "1.0.152", features = ["derive"] }
 uuid = { version = "1.2.2", features = ["v4"] }
 zeroize = { version = "1.5.7", features = ["derive"] }
-tokio = { version = "1.24.1", features = ["rt", "macros"] }
+tokio = { version = "1.24.2", features = ["rt", "macros"] }
 
 actix-web = { version = "4.2.1", optional = true }
 futures-core = { version = "0.3.25", optional = true }
@@ -45,4 +45,10 @@ serde_json = { version = "1.0.91", optional = true }
 actix-http = { version = "3.2.2", optional = true }
 
 [features]
-actix_server = ["dep:actix-web", "dep:actix-http", "dep:futures-core", "dep:serde_json", "dep:futures"]
+actix_server = [
+    "dep:actix-web",
+    "dep:actix-http",
+    "dep:futures-core",
+    "dep:serde_json",
+    "dep:futures"
+]

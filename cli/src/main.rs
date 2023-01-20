@@ -1,10 +1,13 @@
 use rand::seq::IteratorRandom;
 use rand::Rng;
+use std::sync::{Arc, Mutex};
 
 const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
 const DEFAULT_WORKSPACE_NAME: &str = "workspace";
 
+mod assets;
 mod settings;
+mod webfinger;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -68,6 +71,7 @@ async fn main() -> std::io::Result<()> {
 			new_settings
 		}
 	};
+	let settings_copy_for_runtime = settings.clone();
 
 	let log_file_path = if std::path::PathBuf::from(&settings.logfile_path).is_absolute() {
 		std::path::PathBuf::from(&settings.logfile_path)
@@ -75,7 +79,7 @@ async fn main() -> std::io::Result<()> {
 		settings_file_path
 			.parent()
 			.unwrap()
-			.join(settings.logfile_path)
+			.join(settings.logfile_path.clone())
 	};
 
 	simplelog::CombinedLogger::init(vec![
@@ -136,20 +140,25 @@ async fn main() -> std::io::Result<()> {
 		log::debug!("debug admin token : Bearer {}", token.0);
 	}
 
-	let storage_db = std::sync::Arc::new(std::sync::Mutex::new(storage_db));
+	let storage_db = Arc::new(Mutex::new(storage_db));
 
-	let host = settings.domain.unwrap_or(String::from("127.0.0.1"));
+	let localhost = String::from("127.0.0.1");
+	let host = settings.domain.as_ref().unwrap_or(&localhost);
 	let port = settings.port;
-	log::info!("starting server http://{host}:{port}/");
+	let program_state = ProgramState { https_mode: false };
+	log::info!(
+		"starting server {}",
+		settings::build_server_address(&settings, &program_state)
+	);
 
 	actix_web::HttpServer::new(move || {
 		actix_web::App::new()
-			.app_data(actix_web::web::Data::new(storage_db.clone()))
 			.wrap(actix_web::middleware::Logger::default())
-			.route("/storage/{path:.*}", actix_web::web::head().to(storage))
-			.route("/storage/{path:.*}", actix_web::web::get().to(storage))
-			.route("/storage/{path:.*}", actix_web::web::put().to(storage))
-			.route("/storage/{path:.*}", actix_web::web::delete().to(storage))
+			.configure(configure_server(
+				settings_copy_for_runtime.clone(),
+				storage_db.clone(),
+				Arc::new(Mutex::new(program_state.clone())),
+			))
 	})
 	.bind(format!("{host}:{port}"))?
 	.run()
@@ -158,9 +167,7 @@ async fn main() -> std::io::Result<()> {
 
 async fn storage(
 	storage_db: actix_web::web::Data<
-		std::sync::Arc<
-			std::sync::Mutex<pontus_onyx::Database<pontus_onyx_memory_engine::MemoryEngine>>,
-		>,
+		Arc<Mutex<pontus_onyx::Database<pontus_onyx_memory_engine::MemoryEngine>>>,
 	>,
 	request: actix_web::HttpRequest,
 	payload: actix_web::web::Payload,
@@ -174,4 +181,53 @@ async fn storage(
 	log::info!("database response : {:?}", db_response.status);
 
 	actix_web::HttpResponse::from(db_response)
+}
+
+#[actix_web::get("/")]
+pub async fn index() -> impl actix_web::Responder {
+	let template: &str = assets::SERVER_INDEX;
+	let template = template.replace("{{app_name}}", env!("CARGO_PKG_NAME"));
+	let template = template.replace("{{app_version}}", env!("CARGO_PKG_VERSION"));
+
+	actix_web::HttpResponse::Ok().body(template)
+}
+
+pub async fn logo() -> impl actix_web::Responder {
+	let mut res = actix_web::HttpResponse::Ok();
+
+	return res.body(actix_web::web::Bytes::from_static(crate::assets::LOGO));
+}
+
+#[actix_web::get("/assets/remotestorage.svg")]
+pub async fn remotestoragesvg() -> impl actix_web::Responder {
+	return actix_web::HttpResponse::Ok().body(actix_web::web::Bytes::from_static(
+		crate::assets::REMOTE_STORAGE,
+	));
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ProgramState {
+	pub https_mode: bool,
+}
+
+fn configure_server<E: pontus_onyx::Engine + 'static>(
+	settings: settings::Settings,
+	database: Arc<Mutex<pontus_onyx::Database<E>>>,
+	program_state: Arc<Mutex<ProgramState>>,
+) -> impl FnOnce(&mut actix_web::web::ServiceConfig) {
+	return move |config: &mut actix_web::web::ServiceConfig| {
+		config
+			.app_data(actix_web::web::Data::new(settings))
+			.app_data(actix_web::web::Data::new(database))
+			.app_data(actix_web::web::Data::new(program_state))
+			.route("/storage/{path:.*}", actix_web::web::head().to(storage))
+			.route("/storage/{path:.*}", actix_web::web::get().to(storage))
+			.route("/storage/{path:.*}", actix_web::web::put().to(storage))
+			.route("/storage/{path:.*}", actix_web::web::delete().to(storage))
+			.service(index)
+			.route("/favicon.ico", actix_web::web::get().to(logo))
+			.route("/assets/logo.png", actix_web::web::get().to(logo))
+			.service(remotestoragesvg)
+			.service(webfinger::webfinger_handle);
+	};
 }
