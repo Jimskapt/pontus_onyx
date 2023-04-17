@@ -163,23 +163,22 @@ pub async fn from_actix_request(
 		}
 	}
 
-	let origin = {
-		if let Some(origin) = actix_request.headers().get(actix_web::http::header::ORIGIN) {
-			if let Ok(origin) = origin.to_str() {
-				Origin::from(origin)
-			} else {
-				return Err(anyhow::anyhow!(
-					"can not convert origin header value in string"
-				));
-			}
-		} else {
-			if cfg!(debug_assertions) {
+	let origin =
+		{
+			if let Some(origin) = actix_request.headers().get(actix_web::http::header::ORIGIN) {
+				if let Ok(origin) = origin.to_str() {
+					Origin::from(origin)
+				} else {
+					return Err(anyhow::anyhow!(
+						"can not convert origin header value in string"
+					));
+				}
+			} else if cfg!(debug_assertions) {
 				Origin::from("unknown (only allowed when running server in development mode for test purposes)")
 			} else {
 				return Err(anyhow::anyhow!("missing origin header"));
 			}
-		}
-	};
+		};
 
 	let item = {
 		if let Ok(content) = <actix_web::web::Bytes as actix_web::FromRequest>::from_request(

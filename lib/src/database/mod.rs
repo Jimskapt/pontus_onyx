@@ -129,13 +129,16 @@ impl<E: Engine> Database<E> {
 				};
 				let get_response = self.engine.perform(&get_request).await;
 
-				log::debug!("engine reponse : {get_response:?}");
+				log::debug!("engine item GET reponse : {get_response:?}");
 
 				if let EngineResponse::NotFound = get_response {
 					if request.method == Method::Put
 						&& request.limits.iter().any(|limit| {
-							matches!(limit, crate::Limit::IfMatch(_))
-								|| matches!(limit, crate::Limit::IfNoneMatch(_))
+							if let crate::Limit::IfMatch(etag) = limit {
+								*etag != crate::item::Etag::from("*")
+							} else {
+								false
+							}
 						}) {
 						return Response {
 							request,
@@ -228,8 +231,11 @@ impl<E: Engine> Database<E> {
 									}
 									EngineResponse::NotFound => {
 										if request.limits.iter().any(|limit| {
-											matches!(limit, crate::Limit::IfMatch(_))
-												|| matches!(limit, crate::Limit::IfNoneMatch(_))
+											if let crate::Limit::IfMatch(etag) = limit {
+												*etag != crate::item::Etag::from("*")
+											} else {
+												false
+											}
 										}) {
 											Some(ResponseStatus::Performed(
 												EngineResponse::NotFound,

@@ -1,5 +1,3 @@
-use rand::Rng;
-
 use crate::ProgramState;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
@@ -7,7 +5,7 @@ pub struct Settings {
 	pub force_https: Option<bool>,
 	pub domain: Option<String>,
 	pub domain_suffix: Option<String>,
-	pub port: usize,
+	pub port: Option<usize>,
 	pub token_lifetime_seconds: Option<u64>,
 	pub oauth_wait_seconds: Option<u64>,
 	pub logfile_path: String,
@@ -21,7 +19,7 @@ impl Default for Settings {
 			force_https: None,
 			domain: Some(String::from("127.0.0.1")),
 			domain_suffix: None,
-			port: random_port_generation(),
+			port: None,
 			token_lifetime_seconds: Some(60 * 60),
 			oauth_wait_seconds: Some(2),
 			logfile_path: String::from("server.log"),
@@ -40,14 +38,6 @@ pub struct SettingsHTTPS {
 	pub enable_hsts: bool,
 }
 
-fn random_port_generation() -> usize {
-	let mut rng = rand::thread_rng();
-
-	let port = rng.gen_range(1024..65535);
-
-	port as usize
-}
-
 pub fn build_server_address(settings: &Settings, program_state: &ProgramState) -> String {
 	let localhost = String::from("localhost");
 
@@ -60,11 +50,7 @@ pub fn build_server_address(settings: &Settings, program_state: &ProgramState) -
 		protocol += "s";
 	}
 
-	let mut domain = settings
-		.domain
-		.as_ref()
-		.unwrap_or_else(|| &localhost)
-		.clone();
+	let mut domain = settings.domain.as_ref().unwrap_or(&localhost).clone();
 	if let Some(force_domain) = &settings.domain {
 		if !force_domain.trim().is_empty() {
 			domain = force_domain.clone();
@@ -79,32 +65,30 @@ pub fn build_server_address(settings: &Settings, program_state: &ProgramState) -
 				} else {
 					String::new()
 				}
-			} else if settings.port != 80 {
-				format!(":{}", settings.port)
+			} else if program_state.http_port != 80 {
+				format!(":{}", program_state.http_port)
 			} else {
 				String::new()
 			}
 		} else if program_state.https_mode {
-			let https = settings.https.clone().unwrap();
-			if https.port != 443 {
-				format!(":{}", https.port)
+			if program_state.https_port.unwrap() != 443 {
+				format!(":{}", program_state.https_port.unwrap())
 			} else {
 				String::new()
 			}
-		} else if settings.port != 80 {
-			format!(":{}", settings.port)
+		} else if program_state.http_port != 80 {
+			format!(":{}", program_state.http_port)
 		} else {
 			String::new()
 		}
 	} else if program_state.https_mode {
-		let https = settings.https.clone().unwrap();
-		if https.port != 443 {
-			format!(":{}", https.port)
+		if program_state.https_port.unwrap() != 443 {
+			format!(":{}", program_state.https_port.unwrap())
 		} else {
 			String::new()
 		}
-	} else if settings.port != 80 {
-		format!(":{}", settings.port)
+	} else if program_state.http_port != 80 {
+		format!(":{}", program_state.http_port)
 	} else {
 		String::new()
 	};
@@ -124,7 +108,11 @@ pub fn build_server_address(settings: &Settings, program_state: &ProgramState) -
 #[test]
 fn pbw1cgzctiqe163() {
 	let settings = Settings::default();
-	let state = ProgramState { https_mode: false };
+	let state = ProgramState {
+		https_mode: false,
+		http_port: 8743,
+		https_port: None,
+	};
 
 	assert_eq!(
 		build_server_address(&settings, &state),
@@ -132,7 +120,7 @@ fn pbw1cgzctiqe163() {
 			"{}://{}:{}/{}",
 			"http",
 			settings.domain.unwrap_or_else(|| String::from("localhost")),
-			settings.port,
+			state.http_port,
 			""
 		)
 	);
@@ -142,7 +130,11 @@ fn pbw1cgzctiqe163() {
 fn ykf0gcnr7z2ko4wtx8uub() {
 	let mut settings = Settings::default();
 	settings.domain_suffix = Some(String::from("test"));
-	let state = ProgramState { https_mode: false };
+	let state = ProgramState {
+		https_mode: false,
+		http_port: 8743,
+		https_port: None,
+	};
 
 	assert_eq!(
 		build_server_address(&settings, &state),
@@ -150,7 +142,7 @@ fn ykf0gcnr7z2ko4wtx8uub() {
 			"{}://{}:{}/{}",
 			"http",
 			settings.domain.unwrap_or_else(|| String::from("localhost")),
-			settings.port,
+			state.http_port,
 			"test/"
 		)
 	);
@@ -160,7 +152,11 @@ fn ykf0gcnr7z2ko4wtx8uub() {
 fn wxpy6tncuwbbavvxi() {
 	let mut settings = Settings::default();
 	settings.domain_suffix = Some(String::from("test/"));
-	let state = ProgramState { https_mode: false };
+	let state = ProgramState {
+		https_mode: false,
+		http_port: 8743,
+		https_port: None,
+	};
 
 	assert_eq!(
 		build_server_address(&settings, &state),
@@ -168,7 +164,7 @@ fn wxpy6tncuwbbavvxi() {
 			"{}://{}:{}/{}",
 			"http",
 			settings.domain.unwrap_or_else(|| String::from("localhost")),
-			settings.port,
+			state.http_port,
 			"test/"
 		)
 	);
@@ -177,8 +173,17 @@ fn wxpy6tncuwbbavvxi() {
 #[test]
 fn fpfxwrixa1jz7t() {
 	let mut settings = Settings::default();
-	settings.https = Some(SettingsHTTPS { port: 2467, keyfile_path: String::from("watever"), certfile_path: String::from("watever"), enable_hsts: true });
-	let state = ProgramState { https_mode: true };
+	settings.https = Some(SettingsHTTPS {
+		port: 2467,
+		keyfile_path: String::from("watever"),
+		certfile_path: String::from("watever"),
+		enable_hsts: true,
+	});
+	let state = ProgramState {
+		https_mode: true,
+		http_port: 8743,
+		https_port: Some(8743),
+	};
 
 	assert_eq!(
 		build_server_address(&settings, &state),
@@ -186,7 +191,7 @@ fn fpfxwrixa1jz7t() {
 			"{}://{}:{}/{}",
 			"https",
 			settings.domain.unwrap_or_else(|| String::from("localhost")),
-			settings.https.unwrap().port,
+			state.https_port.unwrap(),
 			""
 		)
 	);
@@ -197,14 +202,18 @@ fn xtgfpc3x1zcmb() {
 	let domain = String::from("example.com");
 	let mut settings = Settings::default();
 	settings.domain = Some(domain.clone());
-	let state = ProgramState { https_mode: false };
+	let state = ProgramState {
+		https_mode: false,
+		http_port: 8743,
+		https_port: None,
+	};
 
 	assert_eq!(
 		build_server_address(&settings, &state),
 		format!(
 			"{}://{}/{}",
 			"http",
-			format!("{}:{}", domain, settings.port),
+			format!("{}:{}", domain, state.http_port),
 			""
 		)
 	);
@@ -215,8 +224,17 @@ fn ekkvpuijzifxc() {
 	let domain = String::from("example.com");
 	let mut settings = Settings::default();
 	settings.domain = Some(domain.clone());
-	settings.https = Some(SettingsHTTPS { port: 2467, keyfile_path: String::from("watever"), certfile_path: String::from("watever"), enable_hsts: true });
-	let state = ProgramState { https_mode: true };
+	settings.https = Some(SettingsHTTPS {
+		port: 2467,
+		keyfile_path: String::from("watever"),
+		certfile_path: String::from("watever"),
+		enable_hsts: true,
+	});
+	let state = ProgramState {
+		https_mode: true,
+		http_port: 80,
+		https_port: Some(2467),
+	};
 
 	assert_eq!(
 		build_server_address(&settings, &state),
@@ -234,11 +252,15 @@ fn bj8n5zhu2oaaed55561ygk() {
 	let domain = String::from("example.com");
 	let mut settings = Settings::default();
 	settings.domain = Some(domain.clone());
-	settings.port = 80;
+	settings.port = Some(80);
 	if let Some(https) = &mut settings.https {
-		https.port = 443;
+		https.port = 443
 	}
-	let state = ProgramState { https_mode: false };
+	let state = ProgramState {
+		https_mode: false,
+		http_port: 80,
+		https_port: Some(443),
+	};
 
 	assert_eq!(
 		build_server_address(&settings, &state),
@@ -251,14 +273,18 @@ fn d434yaaxfqcnd4j() {
 	let domain = String::from("example.com");
 	let mut settings = Settings::default();
 	settings.domain = Some(domain.clone());
-	settings.port = 80;
-	settings.https = Some(SettingsHTTPS{
+	settings.port = Some(80);
+	settings.https = Some(SettingsHTTPS {
 		keyfile_path: String::from("whatever"),
 		certfile_path: String::from("whatever"),
 		enable_hsts: true,
-		port: 443
+		port: 443,
 	});
-	let state = ProgramState { https_mode: true };
+	let state = ProgramState {
+		https_mode: true,
+		http_port: 80,
+		https_port: Some(443),
+	};
 
 	assert_eq!(
 		build_server_address(&settings, &state),

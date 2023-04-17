@@ -3,6 +3,7 @@ use crate::{security::RequestValidityError, Method, Request};
 #[cfg(test)]
 use crate::{item::Path, security::Origin};
 
+#[derive(serde::Serialize, Debug)]
 pub struct BearerAccess {
 	pub right: BearerAccessRight,
 	pub module: String,
@@ -61,11 +62,10 @@ impl BearerAccess {
 	pub fn check_request(&self, request: &Request) -> Result<(), RequestValidityError> {
 		self.right.method_check(&request.method)?;
 
-		if self.module == "*" {
-			return Ok(());
-		} else if request
-			.path
-			.starts_with(&(self.module.clone() + "/").try_into().unwrap())
+		if self.module == "*"
+			|| request
+				.path
+				.starts_with(&(self.module.clone() + "/").try_into().unwrap())
 		{
 			return Ok(());
 		} else {
@@ -121,6 +121,7 @@ fn check_request() {
 	);
 }
 
+#[derive(serde::Serialize, Debug)]
 pub enum BearerAccessRight {
 	Read,
 	ReadWrite,
@@ -159,6 +160,15 @@ impl std::convert::TryFrom<&str> for BearerAccessRight {
 			Err(BearerAccessConvertError::IncorrectRight(String::from(
 				input,
 			)))
+		}
+	}
+}
+
+impl std::fmt::Display for BearerAccessRight {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+		match self {
+			Self::Read => f.write_str("read"),
+			Self::ReadWrite => f.write_str("read and write"),
 		}
 	}
 }

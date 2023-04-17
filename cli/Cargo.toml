@@ -21,12 +21,15 @@ workspace = true
 
 [dependencies]
 pontus_onyx = { path = "../lib", features = ["actix_server"] }
-pontus_onyx_memory_engine = { path = "../memory_engine" }
+pontus_onyx_engine_ram = { path = "../engine_ram" }
 
-actix-web = "4.2.1"
+actix-web = "4.3.1"
 log = "0.4.17"
 rand = "0.8.5"
-toml = "0.5.11"
-serde = { version = "1.0.152", features = ["derive"] }
-simplelog = "0.12.0"
-serde_json = "1.0.91"
+toml = "0.7.3"
+serde = { version = "1.0.160", features = ["derive"] }
+simplelog = "0.12.1"
+serde_json = "1.0.96"
+pct-str = "1.2.0"
+time = { version = "0.3.20", features = ["serde-human-readable"] }
+tera = "1.18.1"

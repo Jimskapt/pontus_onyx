@@ -25,7 +25,7 @@ pub async fn webfinger_handle(
 			let resource = resource.strip_prefix("acct:").unwrap();
 			let items = resource.split('@').collect::<Vec<&str>>();
 			if items.len() == 2 {
-				let user = items.get(0).unwrap();
+				let user = items.first().unwrap();
 				let domain = items.get(1).unwrap();
 				// todo : check if user exists ?
 				// todo : check domain & host header ?
@@ -55,7 +55,7 @@ pub async fn webfinger_handle(
 				let body = serde_json::json!({
 					"links": [
 						{
-							"href": format!("{server_addr}storage/{user}"),
+							"href": format!("{server_addr}storage"), // TODO : add `/{user}` suffix ?
 							"rel": "http://tools.ietf.org/id/draft-dejong-remotestorage",
 							"properties": {
 								"http://remotestorage.io/spec/version": "draft-dejong-remotestorage-19",

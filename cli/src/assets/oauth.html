@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link rel="icon" type="image/x-icon" href="../../assets/logo.png">
+		<title>Access request</title>
+		<style>
+			.warning {
+				color: orange;
+			}
+			.error {
+				color: red;
+			}
+		</style>
+		<template_remove>
+			<!--
+				Please do not remove this `<template_remove>` block (even if you modify everything).
+				It is used for program upgrade checks.
+				This block is removed by server before serving this template.
+			-->
+			<template origin="0.19.0"></template>
+		</template_remove>
+	</head>
+	<body>
+		<h1>
+			<img src="/assets/logo.png" alt="" style="max-height:2em;vertical-align:middle;">
+			{{ app_name }} V{{ app_version }}
+		</h1>
+		<h2>Database access request</h2>
+		<p>You are currently on your account management for your storage.</p>
+		<hr>
+		<p>The client : <i>{{ client }}</i></p>
+		<p>Request following access to this scope(s) :
+			<ul>
+				{% for scope in scopes %}
+				<li>
+					<i>{% if scope.right == "ReadWrite" %}read and write{% elif scope.right == "Read" %}read only{% else %}{{ scope.right }}{% endif %}</i>
+					on 
+					{% if scope.module == "*" %}
+					<span class="warning">
+						<strong>all modules</strong><br>
+						It is maybe an security issue.<br>
+						You should accept it only if you know why this client need it !
+					</span>
+					{% else %}
+						<i><a href="../storage/{{username}}/{{scope.module}}/">/storage/{{ username }}/{{ scope.module }}/</a></i>
+						and
+						<i><a href="../storage/public/{{username}}/{{scope.module}}/">/storage/public/{{ username }}/{{ scope.module }}/</a></i>
+					{% endif %}
+				</li>
+				{% endfor %}
+			</ul>
+		</p>
+		<hr>
+		<form method="post">
+			<input type="hidden" name="client_id" value="{{ client }}">
+			<input type="hidden" name="redirect_uri" value="{{ redirect_uri }}">
+			<input type="hidden" name="response_type" value="{{ response_type }}">
+			<input type="hidden" name="username" value="{{ username }}">
+			<input type="hidden" name="scopes" value="{{ raw_scopes }}">
+			<input type="hidden" name="allow" value="Allow">
+			<input type="hidden" name="form_token" value="{{ form_token }}">
+
+			<p>If you agree to this request, please write your password :<br><br>
+				Account : {{ username }}<br>
+				Password : <input type="password" name="password" placeholder="password" value="">
+			</p>
+
+			{% for error in errors %}
+			<p class="error">❌ {{ error }}</p>
+			{% endfor %}
+
+			<p><i>If success, you will be directly redirected on this client, with credentials.</i></p>
+
+			<input type="submit">
+		</form>
+	</body>
+</html>
