@@ -2,7 +2,6 @@ use crate::ProgramState;
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct Settings {
-	pub force_https: Option<bool>,
 	pub domain: Option<String>,
 	pub domain_suffix: Option<String>,
 	pub port: Option<usize>,
@@ -16,7 +15,6 @@ pub struct Settings {
 impl Default for Settings {
 	fn default() -> Self {
 		Self {
-			force_https: None,
 			domain: Some(String::from("127.0.0.1")),
 			domain_suffix: None,
 			port: None,
@@ -32,7 +30,7 @@ impl Default for Settings {
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub struct SettingsHTTPS {
-	pub port: usize,
+	pub port: Option<usize>,
 	pub keyfile_path: String,
 	pub certfile_path: String,
 	pub enable_hsts: bool,
@@ -42,11 +40,7 @@ pub fn build_server_address(settings: &Settings, program_state: &ProgramState) -
 	let localhost = String::from("localhost");
 
 	let mut protocol = String::from("http");
-	if let Some(force_https) = settings.force_https {
-		if force_https {
-			protocol += "s";
-		}
-	} else if program_state.https_mode {
+	if program_state.https_port.is_some() {
 		protocol += "s";
 	}
 
@@ -57,33 +51,9 @@ pub fn build_server_address(settings: &Settings, program_state: &ProgramState) -
 		}
 	}
 
-	let port = if let Some(force_https) = &settings.force_https {
-		if *force_https {
-			if let Some(https) = &settings.https {
-				if https.port != 443 {
-					format!(":{}", https.port)
-				} else {
-					String::new()
-				}
-			} else if program_state.http_port != 80 {
-				format!(":{}", program_state.http_port)
-			} else {
-				String::new()
-			}
-		} else if program_state.https_mode {
-			if program_state.https_port.unwrap() != 443 {
-				format!(":{}", program_state.https_port.unwrap())
-			} else {
-				String::new()
-			}
-		} else if program_state.http_port != 80 {
-			format!(":{}", program_state.http_port)
-		} else {
-			String::new()
-		}
-	} else if program_state.https_mode {
-		if program_state.https_port.unwrap() != 443 {
-			format!(":{}", program_state.https_port.unwrap())
+	let port = if let Some(https_port) = program_state.https_port {
+		if https_port != 443 {
+			format!(":{}", https_port)
 		} else {
 			String::new()
 		}
@@ -109,7 +79,6 @@ pub fn build_server_address(settings: &Settings, program_state: &ProgramState) -
 fn pbw1cgzctiqe163() {
 	let settings = Settings::default();
 	let state = ProgramState {
-		https_mode: false,
 		http_port: 8743,
 		https_port: None,
 	};
@@ -131,7 +100,6 @@ fn ykf0gcnr7z2ko4wtx8uub() {
 	let mut settings = Settings::default();
 	settings.domain_suffix = Some(String::from("test"));
 	let state = ProgramState {
-		https_mode: false,
 		http_port: 8743,
 		https_port: None,
 	};
@@ -153,7 +121,6 @@ fn wxpy6tncuwbbavvxi() {
 	let mut settings = Settings::default();
 	settings.domain_suffix = Some(String::from("test/"));
 	let state = ProgramState {
-		https_mode: false,
 		http_port: 8743,
 		https_port: None,
 	};
@@ -174,13 +141,12 @@ fn wxpy6tncuwbbavvxi() {
 fn fpfxwrixa1jz7t() {
 	let mut settings = Settings::default();
 	settings.https = Some(SettingsHTTPS {
-		port: 2467,
+		port: Some(2467),
 		keyfile_path: String::from("watever"),
 		certfile_path: String::from("watever"),
 		enable_hsts: true,
 	});
 	let state = ProgramState {
-		https_mode: true,
 		http_port: 8743,
 		https_port: Some(8743),
 	};
@@ -203,7 +169,6 @@ fn xtgfpc3x1zcmb() {
 	let mut settings = Settings::default();
 	settings.domain = Some(domain.clone());
 	let state = ProgramState {
-		https_mode: false,
 		http_port: 8743,
 		https_port: None,
 	};
@@ -225,13 +190,12 @@ fn ekkvpuijzifxc() {
 	let mut settings = Settings::default();
 	settings.domain = Some(domain.clone());
 	settings.https = Some(SettingsHTTPS {
-		port: 2467,
+		port: Some(2467),
 		keyfile_path: String::from("watever"),
 		certfile_path: String::from("watever"),
 		enable_hsts: true,
 	});
 	let state = ProgramState {
-		https_mode: true,
 		http_port: 80,
 		https_port: Some(2467),
 	};
@@ -241,7 +205,7 @@ fn ekkvpuijzifxc() {
 		format!(
 			"{}://{}/{}",
 			"https",
-			format!("{}:{}", domain, settings.https.unwrap().port),
+			format!("{}:{}", domain, settings.https.unwrap().port.unwrap()),
 			""
 		)
 	);
@@ -253,13 +217,10 @@ fn bj8n5zhu2oaaed55561ygk() {
 	let mut settings = Settings::default();
 	settings.domain = Some(domain.clone());
 	settings.port = Some(80);
-	if let Some(https) = &mut settings.https {
-		https.port = 443
-	}
+	settings.https = None;
 	let state = ProgramState {
-		https_mode: false,
 		http_port: 80,
-		https_port: Some(443),
+		https_port: None,
 	};
 
 	assert_eq!(
@@ -278,10 +239,9 @@ fn d434yaaxfqcnd4j() {
 		keyfile_path: String::from("whatever"),
 		certfile_path: String::from("whatever"),
 		enable_hsts: true,
-		port: 443,
+		port: Some(443),
 	});
 	let state = ProgramState {
-		https_mode: true,
 		http_port: 80,
 		https_port: Some(443),
 	};

@@ -6,6 +6,8 @@ const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrst
 const DEFAULT_WORKSPACE_NAME: &str = "workspace";
 
 mod assets;
+mod http_server;
+mod https_server;
 mod settings;
 mod webfinger;
 
@@ -69,7 +71,6 @@ async fn main() -> std::io::Result<()> {
 			new_settings
 		}
 	};
-	let settings_copy_for_runtime = settings.clone();
 
 	let log_file_path = if std::path::PathBuf::from(&settings.logfile_path).is_absolute() {
 		std::path::PathBuf::from(&settings.logfile_path)
@@ -140,44 +141,51 @@ async fn main() -> std::io::Result<()> {
 
 	let storage_db = Arc::new(Mutex::new(storage_db));
 
-	let localhost = String::from("127.0.0.1");
-	let host = settings.domain.as_ref().unwrap_or(&localhost);
 	let program_state = ProgramState {
-		https_mode: false,
 		http_port: settings.port.unwrap_or_else(|| {
 			let mut rng_limit = rand::thread_rng();
 			rng_limit.gen_range(49152..65535)
 		}),
-		https_port: None, // TODO
+		https_port: settings.https.as_ref().map(|https_settings| {
+			https_settings.port.unwrap_or_else(|| {
+				let mut rng_limit = rand::thread_rng();
+				rng_limit.gen_range(49152..65535)
+			})
+		}),
 	};
-	log::info!(
-		"starting server {}",
-		settings::build_server_address(&settings, &program_state)
-	);
 
 	let program_state = Arc::new(Mutex::new(program_state));
 
 	// TODO : save/restore it on disk :
 	let form_tokens = Arc::new(Mutex::new(vec![]));
 
-	let program_state_copy_for_runtime = program_state.clone();
+	let mut thread_handles = vec![];
 
-	actix_web::HttpServer::new(move || {
-		actix_web::App::new()
-			.wrap(actix_web::middleware::Logger::default())
-			.configure(configure_server(
-				settings_copy_for_runtime.clone(),
+	thread_handles.push(
+		http_server::run(
+			settings.clone(),
+			storage_db.clone(),
+			program_state.clone(),
+			form_tokens.clone(),
+		)
+		.unwrap(),
+	);
+
+	if settings.https.is_some() {
+		thread_handles.push(
+			https_server::run(
+				settings.clone(),
 				storage_db.clone(),
-				program_state_copy_for_runtime.clone(),
+				program_state.clone(),
 				form_tokens.clone(),
-			))
-	})
-	.bind(format!(
-		"{host}:{}",
-		program_state.lock().unwrap().http_port
-	))?
-	.run()
-	.await
+			)
+			.unwrap(),
+		);
+	}
+
+	while thread_handles.iter().all(|handle| !handle.is_finished()) {}
+
+	Ok(())
 }
 
 async fn storage(
@@ -258,7 +266,7 @@ struct OauthContext {
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
-struct FormToken {
+pub struct FormToken {
 	ip: std::net::SocketAddr,
 	usage: FormTokenUsage,
 	forged: time::OffsetDateTime,
@@ -298,7 +306,21 @@ async fn get_oauth(
 	let template = std::fs::read_to_string("assets/oauth.html")
 		.unwrap_or_else(|_| String::from(assets::SERVER_OAUTH));
 
-	// TODO : remove `<template_remove>.+</template_remove>`
+	let mut output = vec![];
+	let mut rewriter = lol_html::HtmlRewriter::new(
+		lol_html::Settings {
+			element_content_handlers: vec![lol_html::element!("template_remove", |el| {
+				el.remove();
+
+				Ok(())
+			})],
+			..lol_html::Settings::default()
+		},
+		|c: &[u8]| output.extend_from_slice(c),
+	);
+	rewriter.write(template.as_bytes()).unwrap();
+	rewriter.end().unwrap();
+	let template = String::from_utf8(output).unwrap();
 
 	let mut engine = tera::Tera::default();
 	engine.add_raw_template("oauth.html", &template).unwrap();
@@ -624,7 +646,21 @@ pub async fn index() -> impl actix_web::Responder {
 	let template = std::fs::read_to_string("assets/index.html")
 		.unwrap_or_else(|_| String::from(assets::SERVER_INDEX));
 
-	// TODO : remove `<template_remove>.+</template_remove>`
+	let mut output = vec![];
+	let mut rewriter = lol_html::HtmlRewriter::new(
+		lol_html::Settings {
+			element_content_handlers: vec![lol_html::element!("template_remove", |el| {
+				el.remove();
+
+				Ok(())
+			})],
+			..lol_html::Settings::default()
+		},
+		|c: &[u8]| output.extend_from_slice(c),
+	);
+	rewriter.write(template.as_bytes()).unwrap();
+	rewriter.end().unwrap();
+	let template = String::from_utf8(output).unwrap();
 
 	let mut engine = tera::Tera::default();
 	engine.add_raw_template("index.html", &template).unwrap();
@@ -659,7 +695,6 @@ pub async fn remotestoragesvg() -> impl actix_web::Responder {
 
 #[derive(Debug, Clone, Default)]
 pub struct ProgramState {
-	pub https_mode: bool,
 	pub http_port: usize,
 	pub https_port: Option<usize>,
 }

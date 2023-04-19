@@ -23,7 +23,7 @@ workspace = true
 pontus_onyx = { path = "../lib", features = ["actix_server"] }
 pontus_onyx_engine_ram = { path = "../engine_ram" }
 
-actix-web = "4.3.1"
+actix-web = { version = "4.3.1", features = ["rustls"] }
 log = "0.4.17"
 rand = "0.8.5"
 toml = "0.7.3"
@@ -33,3 +33,8 @@ serde_json = "1.0.96"
 pct-str = "1.2.0"
 time = { version = "0.3.20", features = ["serde-human-readable"] }
 tera = "1.18.1"
+rustls = "0.20.8"
+rustls-pemfile = "1.0.2"
+lol_html = "0.3.3"
+actix = "0.13.0"
+ctrlc = "3.2.5"
