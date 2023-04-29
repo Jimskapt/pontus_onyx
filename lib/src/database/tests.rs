@@ -567,6 +567,12 @@ struct EmptyEngineForTests {}
 
 #[async_trait::async_trait]
 impl Engine for EmptyEngineForTests {
+	type Settings = ();
+
+	fn new(_: Self::Settings) -> Self {
+		Self {}
+	}
+
 	async fn perform(&mut self, request: &Request) -> EngineResponse {
 		if (request.method == crate::Method::Get || request.method == crate::Method::Head)
 			&& request.path == "folder_a/existing.json".try_into().unwrap()

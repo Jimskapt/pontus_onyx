@@ -7,8 +7,11 @@ pub struct MemoryEngine {
 	root: BTreeMap<Path, Item>,
 }
 
-impl MemoryEngine {
-	pub fn new() -> Self {
+#[async_trait::async_trait]
+impl pontus_onyx::Engine for MemoryEngine {
+	type Settings = ();
+
+	fn new(_: Self::Settings) -> Self {
 		let mut root = BTreeMap::new();
 		root.insert(
 			pontus_onyx::item::ROOT_PATH.clone(),
@@ -25,10 +28,7 @@ impl MemoryEngine {
 
 		Self { root }
 	}
-}
 
-#[async_trait::async_trait]
-impl pontus_onyx::Engine for MemoryEngine {
 	async fn perform(&mut self, request: &pontus_onyx::Request) -> EngineResponse {
 		log::debug!("performing {request:?}");
 
@@ -67,7 +67,7 @@ impl pontus_onyx::Engine for MemoryEngine {
 				self.perform(
 					&pontus_onyx::Request::put(
 						parent,
-						pontus_onyx::security::Origin::from("memory_engine_internals"),
+						pontus_onyx::security::Origin::from("engine_ram_internals"),
 					)
 					.item(Item::Folder {
 						etag: None,
@@ -91,14 +91,14 @@ impl pontus_onyx::Engine for MemoryEngine {
 				} = self
 					.perform(&pontus_onyx::Request::get(
 						&parent,
-						pontus_onyx::security::Origin::from("memory_engine_internals"),
+						pontus_onyx::security::Origin::from("engine_ram_internals"),
 					))
 					.await
 				{
 					if children.is_empty() {
 						self.perform(&pontus_onyx::Request::delete(
 							parent,
-							pontus_onyx::security::Origin::from("memory_engine_internals"),
+							pontus_onyx::security::Origin::from("engine_ram_internals"),
 						))
 						.await;
 					}

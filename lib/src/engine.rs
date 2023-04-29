@@ -4,6 +4,10 @@ use crate::item::Item;
 
 #[async_trait::async_trait]
 pub trait Engine {
+	type Settings;
+
+	fn new(settings: Self::Settings) -> Self;
+
 	async fn perform(&mut self, request: &crate::Request) -> EngineResponse;
 
 	fn new_for_tests() -> Self;

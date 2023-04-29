@@ -46,6 +46,28 @@ impl Path {
 	pub fn last(&self) -> Option<&PathPart> {
 		self.0.last()
 	}
+	pub fn as_datafile(&self, extension: &str) -> Self {
+		let mut result = self.clone();
+
+		let mut new_end = match result.0.pop() {
+			Some(PathPart::Document(name)) => {
+				vec![PathPart::Document(String::from(name + extension))]
+			}
+			Some(PathPart::Folder(name)) => {
+				vec![
+					PathPart::Folder(name),
+					PathPart::Document(format!(".folder{}", extension)),
+				]
+			}
+			None => {
+				vec![PathPart::Document(format!(".folder{}", extension))]
+			}
+		};
+
+		result.0.append(&mut new_end);
+
+		result
+	}
 }
 impl std::fmt::Display for Path {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -217,4 +239,54 @@ impl std::fmt::Display for PathPartConvertError {
 			}
 		}
 	}
+}
+
+#[test]
+fn as_datafile_empty() {
+	let path = Path::try_from("").unwrap();
+
+	assert_eq!(
+		path.as_datafile(".extension.toml"),
+		Path::try_from(".folder.extension.toml").unwrap(),
+	);
+}
+
+#[test]
+fn as_datafile_folder() {
+	let path = Path::try_from("folder/").unwrap();
+
+	assert_eq!(
+		path.as_datafile(".extension.toml"),
+		Path::try_from("folder/.folder.extension.toml").unwrap(),
+	);
+}
+
+#[test]
+fn as_datafile_sub_folder() {
+	let path = Path::try_from("folder/subfolder/").unwrap();
+
+	assert_eq!(
+		path.as_datafile(".extension.toml"),
+		Path::try_from("folder/subfolder/.folder.extension.toml").unwrap(),
+	);
+}
+
+#[test]
+fn as_datafile_file() {
+	let path = Path::try_from("file.json").unwrap();
+
+	assert_eq!(
+		path.as_datafile(".extension.toml"),
+		Path::try_from("file.json.extension.toml").unwrap(),
+	);
+}
+
+#[test]
+fn as_datafile_sub_file() {
+	let path = Path::try_from("folder/file.json").unwrap();
+
+	assert_eq!(
+		path.as_datafile(".extension.toml"),
+		Path::try_from("folder/file.json.extension.toml").unwrap(),
+	);
 }

@@ -9,6 +9,7 @@ repository = "https://github.com/Jimskapt/pontus_onyx"
 [workspace]
 members = [
     "lib",
-    "engine_ram",
     "cli",
+    "engine_ram",
+    "engine_filesystem",
 ]

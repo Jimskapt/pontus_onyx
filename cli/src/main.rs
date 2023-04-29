@@ -106,7 +106,9 @@ async fn main() -> std::io::Result<()> {
 		env!("CARGO_PKG_VERSION")
 	);
 
-	let mut storage_db = pontus_onyx::Database::new(pontus_onyx_engine_ram::MemoryEngine::new());
+	let mut storage_db = pontus_onyx::Database::new(
+		<pontus_onyx_engine_ram::MemoryEngine as pontus_onyx::Engine>::new(()),
+	);
 
 	if cfg!(debug_assertions) {
 		let user = {
