@@ -23,6 +23,14 @@ impl<E: Engine> Database<E> {
 			settings: crate::DatabaseSettings::default(),
 		}
 	}
+	pub fn enable_save_user(
+		&mut self,
+		userfile_path: Option<impl Into<std::path::PathBuf>>,
+		encrypt_key: Option<[u8; 32]>,
+	) {
+		self.settings.userfile_path = userfile_path.map(|value| value.into());
+		self.settings.encryption_key = encrypt_key;
+	}
 	pub fn create_user(&mut self, username: impl Into<String>, password: &mut str) {
 		let username = username.into();
 
@@ -37,6 +45,39 @@ impl<E: Engine> Database<E> {
 					password: String::from(password),
 					tokens: BTreeMap::new(),
 				});
+			}
+		}
+
+		self.save_on_disk();
+	}
+	pub fn force_load_users(&mut self, users: Vec<crate::User>) {
+		self.users = users;
+	}
+	fn save_on_disk(&self) {
+		if let Some(userfile_path) = &self.settings.userfile_path {
+			if let Some(encryption_key) = &self.settings.encryption_key {
+				std::fs::write(
+					userfile_path,
+					serde_json::to_string(
+						&self
+							.users
+							.iter()
+							.map(|user| {
+								serde_encrypt::traits::SerdeEncryptSharedKey::encrypt(
+									user,
+									&serde_encrypt::shared_key::SharedKey::new(*encryption_key),
+								)
+								.unwrap() // TODO
+								.serialize()
+							})
+							.collect::<Vec<Vec<u8>>>(),
+					)
+					.unwrap(), // TODO
+				)
+				.unwrap()
+			} else {
+				std::fs::write(userfile_path, serde_json::to_string(&self.users).unwrap()).unwrap()
+				// TODO
 			}
 		}
 	}
@@ -84,6 +125,8 @@ impl<E: Engine> Database<E> {
 					name.clone(),
 					crate::security::TokenMetadata::new(converted_bearers),
 				);
+
+				self.save_on_disk();
 
 				Ok(name)
 			} else {

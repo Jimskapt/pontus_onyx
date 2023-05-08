@@ -1,3 +1,5 @@
+#![allow(clippy::needless_return)]
+
 use std::collections::BTreeMap;
 
 use pontus_onyx::{item::Item, item::Path, EngineResponse, Method};
@@ -8,7 +10,7 @@ pub struct FileSystemEngine {
 }
 
 pub struct EngineSettings {
-	path: std::path::PathBuf,
+	pub path: std::path::PathBuf,
 }
 
 #[async_trait::async_trait]
@@ -19,7 +21,7 @@ impl pontus_onyx::Engine for FileSystemEngine {
 		std::fs::create_dir_all(&settings.path).unwrap();
 
 		Self {
-			root_path: settings.path.clone(),
+			root_path: settings.path,
 		}
 	}
 
@@ -68,7 +70,7 @@ impl pontus_onyx::Engine for FileSystemEngine {
 				EngineResponse::CreateSuccess(new_etag, new_last_modified)
 			};
 
-			let new_item_toml = match toml::to_string_pretty(&new_item) {
+			let new_item_toml = match toml::to_string_pretty(&new_item.clone_without_content()) {
 				Ok(res) => res,
 				Err(err) => {
 					log::error!("{}", err);
@@ -264,7 +266,7 @@ impl pontus_onyx::Engine for FileSystemEngine {
 											""
 										}
 									)
-									.replace("\\", "/"),
+									.replace('\\', "/"),
 								)
 								.unwrap();
 
@@ -315,7 +317,7 @@ impl pontus_onyx::Engine for FileSystemEngine {
 		std::fs::create_dir_all(tempdir.join("folder_b")).unwrap();
 		std::fs::create_dir_all(tempdir.join("public").join("folder_c")).unwrap();
 
-		let mut result = Self::new(EngineSettings {
+		let result = Self::new(EngineSettings {
 			path: tempdir.clone(),
 		});
 
@@ -504,18 +506,15 @@ fn list_folder(
 						""
 					}
 				)
-				.replace("\\", "/"),
+				.replace('\\', "/"),
 			)
 			.unwrap();
 
 			let item_name = format!("{}", item_path.last().unwrap());
 
 			let itemdata: Item = toml::from_str(
-				&std::fs::read_to_string(format!(
-					"{}",
-					item_path.as_datafile(".itemdata.toml")
-				))
-				.unwrap(),
+				&std::fs::read_to_string(format!("{}", item_path.as_datafile(".itemdata.toml")))
+					.unwrap(),
 			)
 			.unwrap();
 			let itemdata = if entry.metadata().unwrap().is_dir() {

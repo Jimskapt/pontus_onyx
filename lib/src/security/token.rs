@@ -22,6 +22,7 @@ impl<T: Into<String>> From<T> for Token {
 	}
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct TokenMetadata {
 	creation: time::OffsetDateTime,
 	accesses: Vec<BearerAccess>,

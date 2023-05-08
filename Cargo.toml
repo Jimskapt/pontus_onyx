@@ -12,4 +12,5 @@ members = [
     "cli",
     "engine_ram",
     "engine_filesystem",
+    "engine_localstorage",
 ]

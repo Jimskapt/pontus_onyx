@@ -10,15 +10,12 @@ pub use etag::*;
 pub use last_modified::*;
 pub use path::{Path, PathConvertError, ROOT_PATH};
 
-#[derive(derivative::Derivative, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
-#[derivative(Debug)]
+#[derive(PartialEq, Clone, serde::Serialize, serde::Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum Item {
 	Document {
 		etag: Option<Etag>,
 		last_modified: Option<LastModified>,
-		#[derivative(Debug(format_with = "hidden_content"))]
-		#[serde(skip)]
 		content: Option<Content>,
 		content_type: Option<ContentType>,
 	},
@@ -93,8 +90,4 @@ impl Item {
 			Self::Folder { last_modified, .. } => last_modified.clone(),
 		}
 	}
-}
-
-fn hidden_content(_: &Option<Content>, f: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-	f.write_str("[hidden]")
 }

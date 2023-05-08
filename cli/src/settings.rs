@@ -11,6 +11,7 @@ pub struct Settings {
 	pub userfile_path: String,
 	pub data_path: String,
 	pub https: Option<SettingsHTTPS>,
+	pub custom_encryption_key: Option<[u8; 32]>,
 }
 impl Default for Settings {
 	fn default() -> Self {
@@ -24,6 +25,7 @@ impl Default for Settings {
 			userfile_path: String::from("users.bin"),
 			data_path: String::from("data"),
 			https: None,
+			custom_encryption_key: None,
 		}
 	}
 }

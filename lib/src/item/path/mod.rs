@@ -51,7 +51,7 @@ impl Path {
 
 		let mut new_end = match result.0.pop() {
 			Some(PathPart::Document(name)) => {
-				vec![PathPart::Document(String::from(name + extension))]
+				vec![PathPart::Document(name + extension)]
 			}
 			Some(PathPart::Folder(name)) => {
 				vec![
@@ -189,6 +189,21 @@ impl std::fmt::Display for PathPart {
 			Self::Folder(name) => f.write_fmt(format_args!("{}/", name)),
 		}
 	}
+}
+
+#[test]
+fn is_direct_child() {
+	assert!(
+		Path::try_from("8f281f83-b9b5-4772-a1b6-1c163b11e2c8/folder_a/")
+			.unwrap()
+			.is_direct_child(&Path::try_from("8f281f83-b9b5-4772-a1b6-1c163b11e2c8/").unwrap())
+	);
+
+	assert!(
+		Path::try_from("8f281f83-b9b5-4772-a1b6-1c163b11e2c8/document.txt")
+			.unwrap()
+			.is_direct_child(&Path::try_from("8f281f83-b9b5-4772-a1b6-1c163b11e2c8/").unwrap())
+	);
 }
 
 fn check_item_path_part_name(input: impl Into<String>) -> Result<String, PathPartConvertError> {

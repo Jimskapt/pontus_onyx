@@ -31,18 +31,18 @@ rand = "0.8.5"
 regex = "1.8.1"
 async-trait = "0.1.68"
 derivative = "2.2.0"
-anyhow = "1.0.70"
-time = { version = "0.3.20", features = ["serde"] }
-serde = { version = "1.0.160", features = ["derive"] }
-uuid = { version = "1.3.1", features = ["v4"] }
+anyhow = "1.0.71"
+time = { version = "0.3.21", features = ["serde"] }
+serde = { version = "1.0.162", features = ["derive"] }
+uuid = { version = "1.3.2", features = ["v4"] }
 zeroize = { version = "1.6.0", features = ["derive"] }
-tokio = { version = "1.27.0", features = ["rt", "macros"] }
+tokio = { version = "1.28.0", features = ["rt", "macros"] }
 
 actix-web = { version = "4.3.1", optional = true }
 futures-core = { version = "0.3.28", optional = true }
-futures = { version = "0.3.28", optional = true }
 serde_json = { version = "1.0.96", optional = true }
 actix-http = { version = "3.3.1", optional = true }
+serde-encrypt = "0.7.0"
 
 [features]
-actix_server = ["dep:actix-web", "dep:actix-http", "dep:futures-core", "dep:serde_json", "dep:futures"]
+actix_server = ["dep:actix-web", "dep:actix-http", "dep:futures-core", "dep:serde_json"]

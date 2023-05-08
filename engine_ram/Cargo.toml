@@ -1,7 +1,7 @@
 [package]
 name = "pontus_onyx_engine_ram"
 description = "An engine to use with pontus_onyx crate in order to store data in Random Access Memory (R.A.M.)"
-keywords = ["remotestorage", "database", "pontus_onyx", "pontus_onyx_engine"]
+keywords = ["remotestorage", "database", "pontus_onyx", "pontus_onyx_engine", "ram"]
 categories = ["database", "database-implementations"]
 documentation = "https://docs.rs/pontus_onyx/"
 
@@ -28,9 +28,9 @@ workspace = true
 [dependencies]
 pontus_onyx = { path = "../lib" }
 log = "0.4.17"
-uuid = { version = "1.3.1", features = ["v4"] }
-time = { version = "0.3.20", features = ["std"] }
+uuid = { version = "1.3.2", features = ["v4"] }
+time = { version = "0.3.21", features = ["std"] }
 async-trait = "0.1.68"
 
 [dev-dependencies]
-tokio = { version = "1.27.0", features = ["rt", "macros"] }
+tokio = { version = "1.28.0", features = ["rt", "macros"] }

@@ -6,7 +6,7 @@ use pontus_onyx::{
 };
 
 // CUSTOM SETTINGS (please edit following) :
-use crate::MemoryEngine as ThisEngine;
+use crate::LocalStorageEngine as ThisEngine;
 
 // GENERIC (please do NOT edit following) :
 use pontus_onyx::{Engine, EngineResponse, Request};

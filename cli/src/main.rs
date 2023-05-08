@@ -1,9 +1,15 @@
 use rand::seq::IteratorRandom;
 use rand::Rng;
 use std::sync::{Arc, Mutex};
+use tokio::sync::Mutex as AsyncMutex;
 
 const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
 const DEFAULT_WORKSPACE_NAME: &str = "workspace";
+
+const DEFAULT_ENCRYPTION_KEY: [u8; 32] = [
+	96, 247, 49, 178, 165, 246, 126, 169, 201, 231, 44, 4, 253, 80, 49, 233, 248, 153, 162, 186,
+	144, 108, 34, 56, 19, 105, 186, 31, 145, 151, 27, 115,
+];
 
 mod assets;
 mod http_server;
@@ -106,11 +112,85 @@ async fn main() -> std::io::Result<()> {
 		env!("CARGO_PKG_VERSION")
 	);
 
+	let data_path = if std::path::PathBuf::from(&settings.data_path).is_absolute() {
+		std::path::PathBuf::from(&settings.data_path)
+	} else {
+		settings_file_path
+			.parent()
+			.unwrap()
+			.join(settings.data_path.clone())
+	};
 	let mut storage_db = pontus_onyx::Database::new(
-		<pontus_onyx_engine_ram::MemoryEngine as pontus_onyx::Engine>::new(()),
+		<pontus_onyx_engine_filesystem::FileSystemEngine as pontus_onyx::Engine>::new(
+			pontus_onyx_engine_filesystem::EngineSettings {
+				path: std::path::PathBuf::from(data_path),
+			},
+		),
 	);
 
-	if cfg!(debug_assertions) {
+	let userfile_path = if std::path::PathBuf::from(&settings.userfile_path).is_absolute() {
+		std::path::PathBuf::from(&settings.userfile_path)
+	} else {
+		settings_file_path
+			.parent()
+			.unwrap()
+			.join(settings.userfile_path.clone())
+	};
+
+	let encryption_key = if let Some(key) = &settings.custom_encryption_key {
+		key.clone()
+	} else {
+		DEFAULT_ENCRYPTION_KEY
+	};
+
+	storage_db.enable_save_user(Some(userfile_path.clone()), Some(encryption_key));
+	let mut has_users = false;
+	if userfile_path.exists() {
+		match std::fs::read(&userfile_path) {
+			Ok(userfile_content) => {
+				if let Ok(users) =
+					serde_json::from_slice::<Vec<pontus_onyx::User>>(&userfile_content)
+				{
+					if !users.is_empty() {
+						has_users = true;
+					}
+
+					storage_db.force_load_users(users);
+				} else if let Ok(encrypted) =
+					serde_json::from_slice::<Vec<Vec<u8>>>(&userfile_content)
+				{
+					if !encrypted.is_empty() {
+						has_users = true;
+					}
+
+					let decrypted = encrypted.into_iter().map(|el| {
+						match serde_encrypt::EncryptedMessage::deserialize(el) {
+							Ok(el) => {
+								<pontus_onyx::User as serde_encrypt::traits::SerdeEncryptSharedKey>::decrypt_owned(&el, &serde_encrypt::shared_key::SharedKey::new(encryption_key))
+							},
+							Err(err) => {
+								Err(err)
+							}
+						}
+					});
+
+					if decrypted.clone().all(|el| el.is_ok()) {
+						let temp = decrypted.map(|el| el.unwrap()).collect();
+						storage_db.force_load_users(temp);
+					} else {
+						todo!()
+					}
+				} else {
+					log::warn!("unknown data format while reading users file");
+				}
+			}
+			Err(err) => {
+				log::warn!("can not read users file : {err}");
+			}
+		}
+	}
+
+	if cfg!(debug_assertions) && !has_users {
 		let user = {
 			let mut user = String::new();
 			let mut rng_limit = rand::thread_rng();
@@ -141,7 +221,7 @@ async fn main() -> std::io::Result<()> {
 		log::debug!("debug admin token : Bearer {}", token.0);
 	}
 
-	let storage_db = Arc::new(Mutex::new(storage_db));
+	let storage_db = Arc::new(AsyncMutex::new(storage_db));
 
 	let program_state = ProgramState {
 		http_port: settings.port.unwrap_or_else(|| {
@@ -174,15 +254,14 @@ async fn main() -> std::io::Result<()> {
 	);
 
 	if settings.https.is_some() {
-		thread_handles.push(
-			https_server::run(
-				settings.clone(),
-				storage_db.clone(),
-				program_state.clone(),
-				form_tokens.clone(),
-			)
-			.unwrap(),
-		);
+		match https_server::run(settings, storage_db, program_state, form_tokens) {
+			Ok(https_handle) => {
+				thread_handles.push(https_handle);
+			}
+			Err(err) => {
+				log::warn!("{err}");
+			}
+		}
 	}
 
 	while thread_handles.iter().all(|handle| !handle.is_finished()) {}
@@ -192,7 +271,7 @@ async fn main() -> std::io::Result<()> {
 
 async fn storage(
 	storage_db: actix_web::web::Data<
-		Arc<Mutex<pontus_onyx::Database<pontus_onyx_engine_ram::MemoryEngine>>>,
+		Arc<AsyncMutex<pontus_onyx::Database<pontus_onyx_engine_filesystem::FileSystemEngine>>>,
 	>,
 	request: actix_web::HttpRequest,
 	payload: actix_web::web::Payload,
@@ -201,7 +280,7 @@ async fn storage(
 		.await
 		.unwrap();
 
-	let db_response = storage_db.lock().unwrap().perform(converted_request).await;
+	let db_response = storage_db.lock().await.perform(converted_request).await;
 
 	log::info!("database response : {:?}", db_response.status);
 
@@ -218,7 +297,7 @@ async fn storage_options(request: actix_web::HttpRequest) -> actix_web::HttpResp
 		.to_str()
 		.unwrap();
 
-	// TODO ; build at the end of the implementation.
+	// TODO : build at the end of the implementation.
 	let mut response = actix_web::HttpResponse::Ok();
 	response.insert_header((actix_web::http::header::CACHE_CONTROL, "no-cache"));
 	response.insert_header((actix_web::http::header::ACCESS_CONTROL_ALLOW_ORIGIN, origin));
@@ -426,7 +505,7 @@ pub struct OauthPostQuery {
 
 async fn post_oauth(
 	storage_db: actix_web::web::Data<
-		Arc<Mutex<pontus_onyx::Database<pontus_onyx_engine_ram::MemoryEngine>>>,
+		Arc<AsyncMutex<pontus_onyx::Database<pontus_onyx_engine_filesystem::FileSystemEngine>>>,
 	>,
 	request: actix_web::HttpRequest,
 	form: actix_web::web::Form<OauthPostQuery>,
@@ -469,7 +548,7 @@ async fn post_oauth(
 				if allowed_domains.contains(&String::from(origin.to_str().unwrap_or_default())) {
 					if form.allow == "Allow" {
 						let mut password = form.password.clone();
-						let token = storage_db.lock().unwrap().generate_token(
+						let token = storage_db.lock().await.generate_token(
 							form.username.clone(),
 							&mut password,
 							pct_str::PctString::new(&form.scopes).unwrap().decode(),
@@ -703,7 +782,7 @@ pub struct ProgramState {
 
 fn configure_server<E: pontus_onyx::Engine + 'static>(
 	settings: settings::Settings,
-	database: Arc<Mutex<pontus_onyx::Database<E>>>,
+	database: Arc<AsyncMutex<pontus_onyx::Database<E>>>,
 	program_state: Arc<Mutex<ProgramState>>,
 	form_tokens: Arc<Mutex<Vec<FormToken>>>,
 ) -> impl FnOnce(&mut actix_web::web::ServiceConfig) {

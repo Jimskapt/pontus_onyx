@@ -195,7 +195,7 @@ async fn head_folder_a() {
 			.perform(&Request::head(&folder_a, Origin::from("test")))
 			.await,
 		EngineResponse::GetSuccessFolder {
-			folder: root.get(&folder_a).unwrap().clone(),
+			folder: root.get(&folder_a).unwrap().clone_without_content(),
 			children: BTreeMap::new(),
 		},
 	);

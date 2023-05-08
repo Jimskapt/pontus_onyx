@@ -1,8 +1,9 @@
 use std::sync::{Arc, Mutex};
+use tokio::sync::Mutex as AsyncMutex;
 
 pub fn run<T: pontus_onyx::Engine + Send + 'static>(
 	settings: crate::settings::Settings,
-	storage_db: Arc<Mutex<pontus_onyx::Database<T>>>,
+	storage_db: Arc<AsyncMutex<pontus_onyx::Database<T>>>,
 	program_state: Arc<Mutex<crate::ProgramState>>,
 	form_tokens: Arc<Mutex<Vec<crate::FormToken>>>,
 ) -> Result<std::thread::JoinHandle<Result<(), std::io::Error>>, String> {
@@ -20,15 +21,19 @@ pub fn run<T: pontus_onyx::Engine + Send + 'static>(
 				form_tokens.clone(),
 			))
 	})
-	.bind(addr.clone())
-	.unwrap(); // TODO
+	.bind(addr.clone());
 
-	log::info!("starting unsafe server at http://{addr}");
+	match bind {
+		Ok(bind) => {
+			log::info!("starting unsafe server at http://{addr}");
 
-	let run = bind.run();
+			let run = bind.run();
 
-	Ok(std::thread::spawn(move || {
-		let sys = actix_web::rt::System::new();
-		sys.block_on(run)
-	}))
+			Ok(std::thread::spawn(move || {
+				let sys = actix_web::rt::System::new();
+				sys.block_on(run)
+			}))
+		}
+		Err(err) => Err(format!("can not set up the unsafe server : {err}")),
+	}
 }

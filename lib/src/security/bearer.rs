@@ -3,7 +3,7 @@ use crate::{security::RequestValidityError, Method, Request};
 #[cfg(test)]
 use crate::{item::Path, security::Origin};
 
-#[derive(serde::Serialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct BearerAccess {
 	pub right: BearerAccessRight,
 	pub module: String,
@@ -121,7 +121,7 @@ fn check_request() {
 	);
 }
 
-#[derive(serde::Serialize, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub enum BearerAccessRight {
 	Read,
 	ReadWrite,

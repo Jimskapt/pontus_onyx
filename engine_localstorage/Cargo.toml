@@ -1,7 +1,7 @@
 [package]
-name = "pontus_onyx_engine_filesystem"
-description = "An engine to use with pontus_onyx crate in order to store data in File System, like hard-drive files and directories"
-keywords = ["remotestorage", "database", "pontus_onyx", "pontus_onyx_engine", "file"]
+name = "pontus_onyx_engine_localstorage"
+description = "An engine to use with pontus_onyx crate in order to store data in web browser's localStorage"
+keywords = ["remotestorage", "database", "pontus_onyx", "pontus_onyx_engine", "localstorage"]
 categories = ["database", "database-implementations"]
 documentation = "https://docs.rs/pontus_onyx/"
 
@@ -31,8 +31,10 @@ log = "0.4.17"
 uuid = { version = "1.3.2", features = ["v4"] }
 time = { version = "0.3.21", features = ["std"] }
 async-trait = "0.1.68"
-tempfile = "3.5.0"
-toml = "0.7.3"
+web-sys = { version = "0.3.61", features = ["Window", "Storage"] }
+serde_json = "1.0.96"
+wasm-bindgen = "0.2.84"
+once_cell = "1.17.1"
 
 [dev-dependencies]
 tokio = { version = "1.28.0", features = ["rt", "macros"] }

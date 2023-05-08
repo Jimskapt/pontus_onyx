@@ -1,3 +1,5 @@
+#![allow(clippy::needless_return)]
+
 use std::collections::BTreeMap;
 
 use pontus_onyx::{item::Item, item::Path, EngineResponse, Method};
