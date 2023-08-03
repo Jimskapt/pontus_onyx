@@ -121,6 +121,78 @@ fn check_request() {
 	);
 }
 
+#[test]
+fn check_request_nested_module() {
+	let bearer = BearerAccess {
+		right: BearerAccessRight::ReadWrite,
+		module: String::from("folder_a/folder_aa"),
+	};
+
+	assert_eq!(
+		bearer.check_request(&Request::get(
+			Path::try_from("folder_a/").unwrap(),
+			Origin::from("test"),
+		)),
+		Err(RequestValidityError::OutOfModuleScope)
+	);
+
+	assert_eq!(
+		bearer.check_request(&Request::get(
+			Path::try_from("folder_a").unwrap(),
+			Origin::from("test"),
+		)),
+		Err(RequestValidityError::OutOfModuleScope)
+	);
+
+	assert_eq!(
+		bearer.check_request(&Request::get(
+			Path::try_from("folder_b/").unwrap(),
+			Origin::from("test"),
+		)),
+		Err(RequestValidityError::OutOfModuleScope)
+	);
+
+	assert_eq!(
+		bearer.check_request(&Request::get(
+			Path::try_from("folder_b").unwrap(),
+			Origin::from("test"),
+		)),
+		Err(RequestValidityError::OutOfModuleScope)
+	);
+
+	assert_eq!(
+		bearer.check_request(&Request::get(
+			Path::try_from("folder_a/folder_aa/").unwrap(),
+			Origin::from("test"),
+		)),
+		Ok(())
+	);
+
+	assert_eq!(
+		bearer.check_request(&Request::get(
+			Path::try_from("folder_a/folder_aa").unwrap(),
+			Origin::from("test"),
+		)),
+		Err(RequestValidityError::OutOfModuleScope)
+	);
+
+	assert_eq!(
+		bearer.check_request(&Request::get(
+			Path::try_from("folder_a/folder_ab/").unwrap(),
+			Origin::from("test"),
+		)),
+		Err(RequestValidityError::OutOfModuleScope)
+	);
+
+	assert_eq!(
+		bearer.check_request(&Request::get(
+			Path::try_from("folder_a/folder_ab").unwrap(),
+			Origin::from("test"),
+		)),
+		Err(RequestValidityError::OutOfModuleScope)
+	);
+}
+
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub enum BearerAccessRight {
 	Read,

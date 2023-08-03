@@ -3,6 +3,14 @@ pub struct Response {
 	pub status: ResponseStatus,
 }
 
+impl Response {
+	pub fn unwrap(&self) {
+		if !self.status.is_success() {
+			panic!("{:?}", self.status);
+		}
+	}
+}
+
 #[derive(Debug, PartialEq)]
 pub enum ResponseStatus {
 	Performed(crate::EngineResponse),
@@ -13,6 +21,12 @@ pub enum ResponseStatus {
 	NotSuitableForFolderItem,
 	MissingRequestItem,
 	InternalError(String),
+}
+
+impl ResponseStatus {
+	pub fn is_success(&self) -> bool {
+		matches!(self, Self::Performed(_)) || matches!(self, Self::ContentNotChanged)
+	}
 }
 
 #[cfg(feature = "actix_server")]
@@ -71,9 +85,12 @@ impl From<Response> for actix_web::HttpResponse {
 						if internal_response.request.method == crate::Method::Head {
 							response.finish()
 						} else {
-							// TODO : better error event handler than unwrap, or let actix deal with panic ?
-							response
-								.body::<Vec<u8>>(content.as_ref().unwrap().into_inner().to_vec())
+							response.body::<Vec<u8>>(
+								content
+									.as_ref()
+									.map(|content| content.into_inner().to_vec())
+									.unwrap_or_else(|| vec![]),
+							)
 						}
 					}
 					crate::item::Item::Folder { .. } => {
@@ -98,100 +115,97 @@ impl From<Response> for actix_web::HttpResponse {
 			ResponseStatus::Performed(crate::EngineResponse::GetSuccessFolder {
 				folder,
 				children,
-			}) => {
-				match folder {
-					crate::item::Item::Document { .. } => {
-						let response_status = actix_web::http::StatusCode::INTERNAL_SERVER_ERROR;
-						response.status(response_status);
-						response.content_type("application/ld+json");
-						if internal_response.request.method == crate::Method::Head {
-							response.finish()
-						} else {
-							response.body::<String>(
-								serde_json::json!({
-									"code": u16::from(response_status),
-									"description": response_status.canonical_reason(),
-									"hint": "see server logs to understand why"
-								})
-								.to_string(),
-							)
+			}) => match folder {
+				crate::item::Item::Document { .. } => {
+					let response_status = actix_web::http::StatusCode::INTERNAL_SERVER_ERROR;
+					response.status(response_status);
+					response.content_type("application/ld+json");
+					if internal_response.request.method == crate::Method::Head {
+						response.finish()
+					} else {
+						response.body::<String>(
+							serde_json::json!({
+								"code": u16::from(response_status),
+								"description": response_status.canonical_reason(),
+								"hint": "see server logs to understand why"
+							})
+							.to_string(),
+						)
+					}
+				}
+				crate::item::Item::Folder {
+					etag,
+					last_modified,
+				} => {
+					let response_status = actix_web::http::StatusCode::OK;
+					response.status(response_status);
+
+					response.content_type("application/ld+json");
+
+					response.insert_header((
+						actix_web::http::header::ACCESS_CONTROL_EXPOSE_HEADERS,
+						"Content-Length, Content-Type, ETag, Last-Modified",
+					));
+
+					if let Some(etag) = etag {
+						response.insert_header((actix_web::http::header::ETAG, etag.to_string()));
+					}
+
+					if let Some(last_modified) = last_modified {
+						if let Ok(last_modified) = last_modified
+							.into_inner()
+							.format(&time::format_description::well_known::Rfc2822)
+						{
+							response.insert_header((
+								actix_web::http::header::LAST_MODIFIED,
+								last_modified,
+							));
 						}
 					}
-					crate::item::Item::Folder {
-						etag,
-						last_modified,
-					} => {
-						let response_status = actix_web::http::StatusCode::OK;
-						response.status(response_status);
 
-						response.content_type("application/ld+json");
-
-						response.insert_header((
-							actix_web::http::header::ACCESS_CONTROL_EXPOSE_HEADERS,
-							"Content-Length, Content-Type, ETag, Last-Modified",
-						));
-
-						if let Some(etag) = etag {
-							response
-								.insert_header((actix_web::http::header::ETAG, etag.to_string()));
-						}
-
-						if let Some(last_modified) = last_modified {
-							if let Ok(last_modified) = last_modified
-								.into_inner()
-								.format(&time::format_description::well_known::Rfc2822)
-							{
-								response.insert_header((
-									actix_web::http::header::LAST_MODIFIED,
+					let mut items_result = serde_json::json!({});
+					for (child_path, child) in children {
+						if let Some(child_name) = child_path.last() {
+							match child {
+								crate::item::Item::Document {
+									etag,
+									content,
+									content_type,
 									last_modified,
-								));
-							}
-						}
-
-						let mut items_result = serde_json::json!({});
-						for (child_path, child) in children {
-							if let Some(child_name) = child_path.last() {
-								match child {
-									crate::item::Item::Document {
-										etag,
-										content,
-										content_type,
-										last_modified,
-									} => {
-										items_result[format!("{}", child_name)] = serde_json::json!({
-											"ETag": etag,
-											"Content-Type": content_type,
-											"Content-Length": content.as_ref().unwrap().into_inner().len(), // TODO : better error event handler, or let actix deal with panic ?
-											"Last-Modified": if let Some(last_modified) = last_modified {
-												serde_json::Value::from(last_modified.into_inner().format(&time::format_description::well_known::Rfc2822).unwrap_or_default())
-											} else {
-												serde_json::Value::Null
-											},
-										});
-									}
-									crate::item::Item::Folder { etag, .. } => {
-										items_result[format!("{}", child_name)] = serde_json::json!({
-											"ETag": etag,
-										});
-									}
+								} => {
+									items_result[format!("{}", child_name)] = serde_json::json!({
+										"ETag": etag,
+										"Content-Type": content_type,
+										"Content-Length": content.as_ref().map(|content| content.into_inner().len()).unwrap_or(0),
+										"Last-Modified": if let Some(last_modified) = last_modified {
+											serde_json::Value::from(last_modified.into_inner().format(&time::format_description::well_known::Rfc2822).unwrap_or_default())
+										} else {
+											serde_json::Value::Null
+										},
+									});
+								}
+								crate::item::Item::Folder { etag, .. } => {
+									items_result[format!("{}", child_name)] = serde_json::json!({
+										"ETag": etag,
+									});
 								}
 							}
 						}
+					}
 
-						if internal_response.request.method == crate::Method::Head {
-							response.finish()
-						} else {
-							response.body(
-								serde_json::json!({
-									"@context": "http://remotestorage.io/spec/folder-description",
-									"items": items_result,
-								})
-								.to_string(),
-							)
-						}
+					if internal_response.request.method == crate::Method::Head {
+						response.finish()
+					} else {
+						response.body(
+							serde_json::json!({
+								"@context": "http://remotestorage.io/spec/folder-description",
+								"items": items_result,
+							})
+							.to_string(),
+						)
 					}
 				}
-			}
+			},
 			ResponseStatus::Performed(crate::EngineResponse::CreateSuccess(
 				etag,
 				last_modified,

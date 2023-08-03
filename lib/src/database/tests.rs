@@ -8,7 +8,9 @@ use crate::{
 #[test]
 fn generate_token() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("my_user", &mut String::from("my_password"));
+	database
+		.create_user("my_user", &mut String::from("my_password"))
+		.unwrap();
 
 	assert!(database
 		.generate_token("", &mut String::from("my_password"), "my_access:rw")
@@ -138,7 +140,9 @@ async fn should_not_pass_without_token() {
 #[tokio::test]
 async fn should_pass_with_right_token() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
 		.unwrap();
@@ -160,7 +164,9 @@ async fn should_pass_with_right_token() {
 #[tokio::test]
 async fn should_not_pass_with_wrong_token() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_b:r")
 		.unwrap();
@@ -184,7 +190,9 @@ async fn should_not_pass_with_wrong_token() {
 #[tokio::test]
 async fn should_not_pass_with_token_but_wrong_method() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
 		.unwrap();
@@ -217,7 +225,9 @@ async fn should_not_pass_with_token_but_wrong_method() {
 #[tokio::test]
 async fn get_no_if_match() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
 		.unwrap();
@@ -241,7 +251,9 @@ async fn get_no_if_match() {
 #[tokio::test]
 async fn get_if_match() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
 		.unwrap();
@@ -276,7 +288,9 @@ async fn get_if_match() {
 #[tokio::test]
 async fn get_if_none_match() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
 		.unwrap();
@@ -300,7 +314,9 @@ async fn get_if_none_match() {
 #[tokio::test]
 async fn get_no_if_none_match() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
 		.unwrap();
@@ -335,7 +351,9 @@ async fn get_no_if_none_match() {
 #[tokio::test]
 async fn get_if_none_match_all() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
 		.unwrap();
@@ -359,7 +377,9 @@ async fn get_if_none_match_all() {
 #[tokio::test]
 async fn put_content_not_changed() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
 		.unwrap();
@@ -388,7 +408,9 @@ async fn put_content_not_changed() {
 #[tokio::test]
 async fn put_folder_path() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
 		.unwrap();
@@ -417,7 +439,9 @@ async fn put_folder_path() {
 #[tokio::test]
 async fn put_folder_item() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
 		.unwrap();
@@ -444,7 +468,9 @@ async fn put_folder_item() {
 #[tokio::test]
 async fn put_none_item() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
 		.unwrap();
@@ -467,7 +493,9 @@ async fn put_none_item() {
 #[tokio::test]
 async fn put_not_existing() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
 		.unwrap();
@@ -501,7 +529,9 @@ async fn put_not_existing() {
 #[tokio::test]
 async fn put_existing() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
 		.unwrap();
@@ -535,7 +565,9 @@ async fn put_existing() {
 #[tokio::test]
 async fn get_not_found() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
-	database.create_user("username", &mut String::from("password"));
+	database
+		.create_user("username", &mut String::from("password"))
+		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
 		.unwrap();
@@ -614,9 +646,11 @@ impl Engine for EmptyEngineForTests {
 		return EngineResponse::InternalError(String::from(EMPTY_ENGINE_PASS_RESPONSE));
 	}
 
+	#[cfg(test)]
 	fn new_for_tests() -> Self {
 		Self {}
 	}
+	#[cfg(test)]
 	fn root_for_tests(&self) -> BTreeMap<Path, crate::item::Item> {
 		BTreeMap::new()
 	}

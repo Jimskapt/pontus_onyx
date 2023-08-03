@@ -17,6 +17,9 @@ mod https_server;
 mod settings;
 mod webfinger;
 
+#[cfg(test)]
+mod actix_tests;
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
 	let min_log_level = if cfg!(debug_assertions) {
@@ -122,9 +125,7 @@ async fn main() -> std::io::Result<()> {
 	};
 	let mut storage_db = pontus_onyx::Database::new(
 		<pontus_onyx_engine_filesystem::FileSystemEngine as pontus_onyx::Engine>::new(
-			pontus_onyx_engine_filesystem::EngineSettings {
-				path: std::path::PathBuf::from(data_path),
-			},
+			pontus_onyx_engine_filesystem::EngineSettings { path: data_path },
 		),
 	);
 
@@ -138,7 +139,7 @@ async fn main() -> std::io::Result<()> {
 	};
 
 	let encryption_key = if let Some(key) = &settings.custom_encryption_key {
-		key.clone()
+		*key
 	} else {
 		DEFAULT_ENCRYPTION_KEY
 	};
@@ -211,7 +212,7 @@ async fn main() -> std::io::Result<()> {
 			password
 		};
 
-		storage_db.create_user(&user, &mut password);
+		storage_db.create_user(&user, &mut password).unwrap();
 		let token = storage_db
 			.generate_token(&user, &mut password, "*:rw")
 			.unwrap();
@@ -223,18 +224,7 @@ async fn main() -> std::io::Result<()> {
 
 	let storage_db = Arc::new(AsyncMutex::new(storage_db));
 
-	let program_state = ProgramState {
-		http_port: settings.port.unwrap_or_else(|| {
-			let mut rng_limit = rand::thread_rng();
-			rng_limit.gen_range(49152..65535)
-		}),
-		https_port: settings.https.as_ref().map(|https_settings| {
-			https_settings.port.unwrap_or_else(|| {
-				let mut rng_limit = rand::thread_rng();
-				rng_limit.gen_range(49152..65535)
-			})
-		}),
-	};
+	let program_state = ProgramState::from(&settings);
 
 	let program_state = Arc::new(Mutex::new(program_state));
 
@@ -484,7 +474,7 @@ async fn get_oauth(
 	let rendered = engine
 		.render(
 			"oauth.html",
-			&tera::Context::from_serialize(&context).unwrap(),
+			&tera::Context::from_serialize(context).unwrap(),
 		)
 		.unwrap();
 
@@ -754,7 +744,7 @@ pub async fn index() -> impl actix_web::Responder {
 	let rendered = engine
 		.render(
 			"index.html",
-			&tera::Context::from_serialize(&context).unwrap(),
+			&tera::Context::from_serialize(context).unwrap(),
 		)
 		.unwrap();
 
@@ -778,6 +768,22 @@ pub async fn remotestoragesvg() -> impl actix_web::Responder {
 pub struct ProgramState {
 	pub http_port: usize,
 	pub https_port: Option<usize>,
+}
+impl ProgramState {
+	pub fn from(settings: &crate::settings::Settings) -> Self {
+		Self {
+			http_port: settings.port.unwrap_or_else(|| {
+				let mut rng_limit = rand::thread_rng();
+				rng_limit.gen_range(49152..65535)
+			}),
+			https_port: settings.https.as_ref().map(|https_settings| {
+				https_settings.port.unwrap_or_else(|| {
+					let mut rng_limit = rand::thread_rng();
+					rng_limit.gen_range(49152..65535)
+				})
+			}),
+		}
+	}
 }
 
 fn configure_server<E: pontus_onyx::Engine + 'static>(

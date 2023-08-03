@@ -1,5 +1,6 @@
 {
-    "rust-analyzer.cargo.allFeatures": true,
+    "rust-analyzer.cargo.features": "all",
+    "rust-analyzer.check.features": "all",
     "editor.tokenColorCustomizations": {
         "comments": "",
         "textMateRules": []

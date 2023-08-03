@@ -1,0 +1,1 @@
+rustfmt.exe .\cli\src\main.rs .\lib\src\lib.rs .\engine_filesystem\src\lib.rs .\engine_localstorage\src\lib.rs .\engine_ram\src\lib.rs

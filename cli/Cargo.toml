@@ -27,7 +27,7 @@ actix-web = { version = "4.3.1", features = ["rustls"] }
 log = "0.4.17"
 rand = "0.8.5"
 toml = "0.7.3"
-serde = { version = "1.0.162", features = ["derive"] }
+serde = { version = "1.0.163", features = ["derive"] }
 simplelog = "0.12.1"
 serde_json = "1.0.96"
 pct-str = "1.2.0"
@@ -36,5 +36,11 @@ tera = "1.18.1"
 rustls = "0.20.8"
 rustls-pemfile = "1.0.2"
 lol_html = "0.4.0"
-tokio = "1.28.0"
+tokio = "1.28.1"
 serde-encrypt = "0.7.0"
+
+[dev-dependencies]
+pontus_onyx_engine_ram = { path = "../engine_ram" }
+
+actix-http = "3.3.1"
+tempfile = "3.5.0"

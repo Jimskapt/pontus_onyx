@@ -2,6 +2,9 @@
 
 use std::collections::BTreeMap;
 
+#[cfg(test)]
+mod generic_tests;
+
 use pontus_onyx::{item::Item, item::Path, EngineResponse, Method};
 
 #[derive(Default)]
@@ -9,9 +12,11 @@ pub struct MemoryEngine {
 	root: BTreeMap<Path, Item>,
 }
 
+pub struct EngineSettings {}
+
 #[async_trait::async_trait]
 impl pontus_onyx::Engine for MemoryEngine {
-	type Settings = ();
+	type Settings = EngineSettings;
 
 	fn new(_: Self::Settings) -> Self {
 		let mut root = BTreeMap::new();
@@ -252,6 +257,3 @@ impl pontus_onyx::Engine for MemoryEngine {
 		self.root.clone()
 	}
 }
-
-#[cfg(test)]
-mod generic_tests;

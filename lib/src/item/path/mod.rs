@@ -1,17 +1,7 @@
 #[cfg(test)]
 pub mod tests;
 
-#[derive(
-	derivative::Derivative,
-	PartialEq,
-	Clone,
-	PartialOrd,
-	Ord,
-	Eq,
-	serde::Serialize,
-	serde::Deserialize,
-)]
-#[derivative(Debug = "transparent")]
+#[derive(PartialEq, Clone, PartialOrd, Ord, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Path(Vec<PathPart>);
 
 impl Path {
@@ -83,6 +73,11 @@ impl std::fmt::Display for Path {
 		}
 
 		f.write_str(&result)
+	}
+}
+impl std::fmt::Debug for Path {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+		<Self as std::fmt::Display>::fmt(&self, f)
 	}
 }
 
@@ -169,7 +164,7 @@ impl std::fmt::Display for PathConvertError {
 }
 impl std::error::Error for PathConvertError {}
 
-#[derive(Debug, PartialEq, Clone, PartialOrd, Ord, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(PartialEq, Clone, PartialOrd, Ord, Eq, serde::Serialize, serde::Deserialize)]
 pub enum PathPart {
 	Folder(String),
 	Document(String),

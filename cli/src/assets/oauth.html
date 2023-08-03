@@ -45,9 +45,9 @@
 						You should accept it only if you know why this client need it !
 					</span>
 					{% else %}
-						<i><a href="../storage/{{username}}/{{scope.module}}/">/storage/{{ username }}/{{ scope.module }}/</a></i>
+						<i><a href="../storage/{{scope.module}}/">/storage/{{ scope.module }}/</a></i>
 						and
-						<i><a href="../storage/public/{{username}}/{{scope.module}}/">/storage/public/{{ username }}/{{ scope.module }}/</a></i>
+						<i><a href="../storage/public/{{scope.module}}/">/storage/public/{{ scope.module }}/</a></i>
 					{% endif %}
 				</li>
 				{% endfor %}

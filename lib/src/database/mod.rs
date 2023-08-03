@@ -31,8 +31,16 @@ impl<E: Engine> Database<E> {
 		self.settings.userfile_path = userfile_path.map(|value| value.into());
 		self.settings.encryption_key = encrypt_key;
 	}
-	pub fn create_user(&mut self, username: impl Into<String>, password: &mut str) {
+	pub fn create_user(
+		&mut self,
+		username: impl Into<String>,
+		password: &mut str,
+	) -> Result<(), String> {
 		let username = username.into();
+
+		if username == "public" {
+			return Err(String::from("the username `public` is reserved"));
+		}
 
 		match self.users.iter_mut().find(|user| user.username == username) {
 			Some(user) => {
@@ -48,12 +56,23 @@ impl<E: Engine> Database<E> {
 			}
 		}
 
-		self.save_on_disk();
+		#[cfg(feature = "actix_server")]
+		{
+			if self.settings.userfile_path.is_some() {
+				if let Err(err) = self.save_on_disk() {
+					return Err(format!("can not save user on disk : {err}"));
+				}
+			}
+		}
+
+		Ok(())
 	}
 	pub fn force_load_users(&mut self, users: Vec<crate::User>) {
 		self.users = users;
 	}
-	fn save_on_disk(&self) {
+	#[must_use]
+	#[cfg(feature = "actix_server")]
+	fn save_on_disk(&self) -> anyhow::Result<()> {
 		if let Some(userfile_path) = &self.settings.userfile_path {
 			if let Some(encryption_key) = &self.settings.encryption_key {
 				std::fs::write(
@@ -71,14 +90,15 @@ impl<E: Engine> Database<E> {
 								.serialize()
 							})
 							.collect::<Vec<Vec<u8>>>(),
-					)
-					.unwrap(), // TODO
+					)?,
 				)
-				.unwrap()
+				.map_err(anyhow::Error::from)
 			} else {
-				std::fs::write(userfile_path, serde_json::to_string(&self.users).unwrap()).unwrap()
-				// TODO
+				std::fs::write(userfile_path, serde_json::to_string(&self.users).unwrap())
+					.map_err(anyhow::Error::from)
 			}
+		} else {
+			Err(anyhow::format_err!("missing `userfile_path` in settings"))
 		}
 	}
 	pub fn generate_token(
@@ -94,7 +114,7 @@ impl<E: Engine> Database<E> {
 			if user.password == *password {
 				let mut converted_bearers = vec![];
 
-				for bearer in bearers.split(',') {
+				for bearer in bearers.split(' ') {
 					match crate::security::BearerAccess::try_from(bearer) {
 						Ok(bearer) => {
 							converted_bearers.push(bearer);
@@ -126,7 +146,12 @@ impl<E: Engine> Database<E> {
 					crate::security::TokenMetadata::new(converted_bearers),
 				);
 
-				self.save_on_disk();
+				#[cfg(feature = "actix_server")]
+				{
+					if let Err(err) = self.save_on_disk() {
+						log::error!("can not save new token on disk : {err}")
+					}
+				}
 
 				Ok(name)
 			} else {
@@ -142,6 +167,7 @@ impl<E: Engine> Database<E> {
 }
 
 impl<E: Engine> Database<E> {
+	#[must_use]
 	pub async fn perform(&mut self, request: impl Into<crate::Request>) -> Response {
 		let request = request.into();
 

@@ -27,8 +27,8 @@ pub async fn webfinger_handle(
 			if items.len() == 2 {
 				let user = items.first().unwrap();
 				let domain = items.get(1).unwrap();
-				// todo : check if user exists ?
-				// todo : check domain & host header ?
+				// TODO : check if user exists ?
+				// TODO : check domain & host header ?
 
 				let server_addr = crate::settings::build_server_address(
 					&settings,
