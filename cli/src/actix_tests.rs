@@ -125,7 +125,8 @@ async fn build_test_server() -> (impl FnOnce(&mut actix_web::web::ServiceConfig)
 
 	let form_tokens = Arc::new(Mutex::new(vec![]));
 
-	let program_state = crate::ProgramState::from(&settings);
+	let program_state =
+		crate::ProgramState::from(&settings, &std::path::PathBuf::from("/dev/null"));
 
 	(
 		crate::configure_server(

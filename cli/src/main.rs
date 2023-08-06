@@ -11,6 +11,7 @@ const DEFAULT_ENCRYPTION_KEY: [u8; 32] = [
 	144, 108, 34, 56, 19, 105, 186, 31, 145, 151, 27, 115,
 ];
 
+mod admin_ui;
 mod assets;
 mod http_server;
 mod https_server;
@@ -28,22 +29,24 @@ async fn main() -> std::io::Result<()> {
 		simplelog::LevelFilter::Info
 	};
 
-	let settings_file_path = if let Some(settings_file_path) = std::env::args().nth(1) {
-		let new_path = std::path::PathBuf::from(settings_file_path);
+	let settings_file_path =
+		dunce::canonicalize(if let Some(settings_file_path) = std::env::args().nth(1) {
+			let new_path = std::path::PathBuf::from(settings_file_path);
 
-		std::fs::create_dir_all(new_path.parent().unwrap()).ok();
+			std::fs::create_dir_all(new_path.parent().unwrap()).ok();
 
-		new_path
-	} else {
-		let workspace = std::path::PathBuf::from(std::env::args().next().unwrap())
-			.parent()
-			.unwrap()
-			.join(DEFAULT_WORKSPACE_NAME);
+			new_path
+		} else {
+			let workspace = std::path::PathBuf::from(std::env::args().next().unwrap())
+				.parent()
+				.unwrap()
+				.join(DEFAULT_WORKSPACE_NAME);
 
-		std::fs::create_dir_all(&workspace).ok();
+			std::fs::create_dir_all(&workspace).ok();
 
-		workspace.join("settings.toml")
-	};
+			workspace.join("settings.toml")
+		})
+		.unwrap();
 
 	let settings = match std::fs::read_to_string(&settings_file_path) {
 		Ok(settings_file_content) => {
@@ -128,6 +131,9 @@ async fn main() -> std::io::Result<()> {
 			pontus_onyx_engine_filesystem::EngineSettings { path: data_path },
 		),
 	);
+
+	// TODO : crate and add other policies
+	storage_db.add_policy(Box::new(NotSameUserPasswordPolicy {}));
 
 	let userfile_path = if std::path::PathBuf::from(&settings.userfile_path).is_absolute() {
 		std::path::PathBuf::from(&settings.userfile_path)
@@ -224,7 +230,7 @@ async fn main() -> std::io::Result<()> {
 
 	let storage_db = Arc::new(AsyncMutex::new(storage_db));
 
-	let program_state = ProgramState::from(&settings);
+	let program_state = ProgramState::from(&settings, &settings_file_path);
 
 	let program_state = Arc::new(Mutex::new(program_state));
 
@@ -232,6 +238,16 @@ async fn main() -> std::io::Result<()> {
 	let form_tokens = Arc::new(Mutex::new(vec![]));
 
 	let mut thread_handles = vec![];
+
+	thread_handles.push(
+		admin_ui::run(
+			settings.clone(),
+			storage_db.clone(),
+			program_state.clone(),
+			form_tokens.clone(),
+		)
+		.unwrap(),
+	);
 
 	thread_handles.push(
 		http_server::run(
@@ -343,10 +359,28 @@ pub struct FormToken {
 	forged: time::OffsetDateTime,
 	value: String,
 }
+impl FormToken {
+	pub fn new(ip: &std::net::SocketAddr, usage: &FormTokenUsage) -> Self {
+		let mut new_form_token = String::new();
+		let mut rng_limit = rand::thread_rng();
+		for _ in 1..rng_limit.gen_range(16..32) {
+			let mut rng_item = rand::thread_rng();
+			new_form_token.push(ALPHABET.chars().choose(&mut rng_item).unwrap());
+		}
+
+		Self {
+			ip: *ip,
+			usage: usage.clone(),
+			forged: time::OffsetDateTime::now_utc(),
+			value: new_form_token,
+		}
+	}
+}
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-enum FormTokenUsage {
+pub enum FormTokenUsage {
 	Oauth,
+	UserEdit,
 }
 
 async fn get_oauth(
@@ -419,12 +453,10 @@ async fn get_oauth(
 	};
 
 	if !updated {
-		form_tokens.lock().unwrap().push(FormToken {
-			ip,
-			usage: FormTokenUsage::Oauth,
-			forged: time::OffsetDateTime::now_utc(),
-			value: new_form_token.clone(),
-		});
+		let new_token = FormToken::new(&ip, &FormTokenUsage::Oauth);
+		new_form_token = new_token.value.clone();
+
+		form_tokens.lock().unwrap().push(new_token);
 	}
 
 	let context = OauthContext {
@@ -766,13 +798,20 @@ pub async fn remotestoragesvg() -> impl actix_web::Responder {
 
 #[derive(Debug, Clone, Default)]
 pub struct ProgramState {
+	pub settings_path: std::path::PathBuf,
 	pub http_port: usize,
+	pub admin_ui_port: usize,
 	pub https_port: Option<usize>,
 }
 impl ProgramState {
-	pub fn from(settings: &crate::settings::Settings) -> Self {
+	pub fn from(settings: &crate::settings::Settings, settings_path: &std::path::Path) -> Self {
 		Self {
+			settings_path: settings_path.to_path_buf(),
 			http_port: settings.port.unwrap_or_else(|| {
+				let mut rng_limit = rand::thread_rng();
+				rng_limit.gen_range(49152..65535)
+			}),
+			admin_ui_port: settings.admin_ui_port.unwrap_or_else(|| {
 				let mut rng_limit = rand::thread_rng();
 				rng_limit.gen_range(49152..65535)
 			}),
@@ -813,5 +852,24 @@ fn configure_server<E: pontus_onyx::Engine + 'static>(
 			.route("/oauth/{username}", actix_web::web::post().to(post_oauth))
 			.service(remotestoragesvg)
 			.service(webfinger::webfinger_handle);
+	}
+}
+
+struct NotSameUserPasswordPolicy {}
+impl pontus_onyx::security::UserSecurityPolicy for NotSameUserPasswordPolicy {
+	fn get_name(&self) -> String {
+		String::from("not same user and password")
+	}
+	fn get_description(&self) -> String {
+		String::from("the username and the password should not have to be same")
+	}
+	fn check(&self, username: &str, password: &str) -> Result<(), String> {
+		if username.trim().to_lowercase() == password.trim().to_lowercase() {
+			return Err(String::from(
+				"the username and password should not be the same",
+			));
+		}
+
+		Ok(())
 	}
 }

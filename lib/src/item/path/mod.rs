@@ -77,7 +77,7 @@ impl std::fmt::Display for Path {
 }
 impl std::fmt::Debug for Path {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-		<Self as std::fmt::Display>::fmt(&self, f)
+		<Self as std::fmt::Display>::fmt(self, f)
 	}
 }
 

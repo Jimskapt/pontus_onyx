@@ -7,7 +7,7 @@ A [remoteStorage](https://remotestorage.io/) server and client.
 So 0.x.0 versions are breaking changes until then.
 ```
 
-Based on [IETF Draft of the 13 June 2022](https://datatracker.ietf.org/doc/html/draft-dejong-remotestorage-19).
+Based on [IETF Draft of the 13 June 2022](https://datatracker.ietf.org/doc/html/draft-dejong-remotestorage-21).
 
 This workspace contains 3 crates :
 

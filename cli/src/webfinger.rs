@@ -13,7 +13,7 @@ pub async fn webfinger_handle(
 				"href": "/",
 				"rel": "http://tools.ietf.org/id/draft-dejong-remotestorage",
 				"properties": {
-					"http://remotestorage.io/spec/version": "draft-dejong-remotestorage-19",
+					"http://remotestorage.io/spec/version": "draft-dejong-remotestorage-21",
 					"http://tools.ietf.org/html/rfc6749#section-4.2": "TODO" // TODO
 				}
 			}
@@ -58,7 +58,7 @@ pub async fn webfinger_handle(
 							"href": format!("{server_addr}storage"), // TODO : add `/{user}` suffix ?
 							"rel": "http://tools.ietf.org/id/draft-dejong-remotestorage",
 							"properties": {
-								"http://remotestorage.io/spec/version": "draft-dejong-remotestorage-19",
+								"http://remotestorage.io/spec/version": "draft-dejong-remotestorage-21",
 								"http://tools.ietf.org/html/rfc6749#section-4.2": format!("{server_addr}oauth/{user}"),
 								"http://tools.ietf.org/html/rfc6750#section-2.3": serde_json::value::Value::Null,
 								"http://tools.ietf.org/html/rfc7233": serde_json::value::Value::Null,

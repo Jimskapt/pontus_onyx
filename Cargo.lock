@@ -742,6 +742,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "dunce"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56ce8c6da7551ec6c462cbaf3bfbc75131ebbfa1c944aeaa9dab51ca1c5f0c3b"
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1557,6 +1563,7 @@ version = "0.19.0"
 dependencies = [
  "actix-http",
  "actix-web",
+ "dunce",
  "log",
  "lol_html",
  "pct-str",
@@ -1575,6 +1582,7 @@ dependencies = [
  "time",
  "tokio",
  "toml",
+ "zeroize",
 ]
 
 [[package]]

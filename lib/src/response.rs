@@ -89,7 +89,7 @@ impl From<Response> for actix_web::HttpResponse {
 								content
 									.as_ref()
 									.map(|content| content.into_inner().to_vec())
-									.unwrap_or_else(|| vec![]),
+									.unwrap_or_else(Vec::new),
 							)
 						}
 					}

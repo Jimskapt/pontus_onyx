@@ -12,6 +12,7 @@ pub struct Database<E: Engine> {
 	users: Vec<crate::User>,
 	listeners: Vec<Box<dyn crate::Listener + Send>>,
 	settings: crate::DatabaseSettings,
+	security_policies: Vec<Box<dyn crate::security::UserSecurityPolicy + Send>>,
 }
 
 impl<E: Engine> Database<E> {
@@ -21,6 +22,7 @@ impl<E: Engine> Database<E> {
 			users: vec![],
 			listeners: vec![],
 			settings: crate::DatabaseSettings::default(),
+			security_policies: vec![],
 		}
 	}
 	pub fn enable_save_user(
@@ -31,6 +33,12 @@ impl<E: Engine> Database<E> {
 		self.settings.userfile_path = userfile_path.map(|value| value.into());
 		self.settings.encryption_key = encrypt_key;
 	}
+	pub fn add_policy<SP: crate::security::UserSecurityPolicy + Sized + Send + 'static>(
+		&mut self,
+		policy: Box<SP>,
+	) {
+		self.security_policies.push(policy);
+	}
 	pub fn create_user(
 		&mut self,
 		username: impl Into<String>,
@@ -40,6 +48,12 @@ impl<E: Engine> Database<E> {
 
 		if username == "public" {
 			return Err(String::from("the username `public` is reserved"));
+		}
+
+		for policy in &self.security_policies {
+			if let Err(err) = policy.check(&username, password) {
+				return Err(format!("policy `{}` : {err}", policy.get_name()));
+			}
 		}
 
 		match self.users.iter_mut().find(|user| user.username == username) {
@@ -67,10 +81,52 @@ impl<E: Engine> Database<E> {
 
 		Ok(())
 	}
+	pub fn remove_user(
+		&mut self,
+		username: impl Into<String>,
+	) -> Result<zeroize::Zeroizing<String>, String> {
+		let username = username.into();
+
+		if username == "public" {
+			return Err(String::from("the username `public` is reserved"));
+		}
+
+		let found_index = self
+			.users
+			.iter()
+			.enumerate()
+			.find(|(_, user)| user.username == username)
+			.map(|(index, _)| index);
+		let old_password = if let Some(index) = found_index {
+			let user = self.users.remove(index);
+			Some(zeroize::Zeroizing::new(user.password.clone()))
+		} else {
+			None
+		};
+
+		#[cfg(feature = "actix_server")]
+		{
+			if self.settings.userfile_path.is_some() {
+				if let Err(err) = self.save_on_disk() {
+					return Err(format!("can not save user on disk : {err}"));
+				}
+			}
+		}
+
+		match old_password {
+			Some(old_password) => Ok(old_password),
+			None => Err(String::from("username not found")),
+		}
+	}
+	pub fn get_users_list(&self) -> Vec<String> {
+		self.users
+			.iter()
+			.map(|user| user.username.clone())
+			.collect()
+	}
 	pub fn force_load_users(&mut self, users: Vec<crate::User>) {
 		self.users = users;
 	}
-	#[must_use]
 	#[cfg(feature = "actix_server")]
 	fn save_on_disk(&self) -> anyhow::Result<()> {
 		if let Some(userfile_path) = &self.settings.userfile_path {

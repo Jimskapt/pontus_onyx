@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Admin: Settings: {{program.app_name}}</title>
+		<template_remove>
+			<!--
+				Please do not remove this `<template_remove>` block (even if you modify everything).
+				It is used for program upgrade checks.
+				This block is removed by server before serving this template.
+			-->
+			<template origin="0.19.0"></template>
+		</template_remove>
+	</head>
+	<body style="padding:1em 2em;">
+		<p><a href="/" class="backlink">⇽ admin home</a></p>
+		<h1>
+			Settings
+		</h1>
+		<p>Please edit <a href="file://{{settings_path}}" target="_blank">{{settings_path}}</a> file.</p>
+	</body>
+</html>

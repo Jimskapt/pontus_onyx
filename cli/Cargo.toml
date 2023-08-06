@@ -38,6 +38,8 @@ rustls-pemfile = "1.0.2"
 lol_html = "0.4.0"
 tokio = "1.28.1"
 serde-encrypt = "0.7.0"
+dunce = "1.0.4"
+zeroize = "1.6.0"
 
 [dev-dependencies]
 pontus_onyx_engine_ram = { path = "../engine_ram" }

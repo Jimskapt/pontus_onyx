@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Admin: {{program.app_name}}</title>
+		<template_remove>
+			<!--
+				Please do not remove this `<template_remove>` block (even if you modify everything).
+				It is used for program upgrade checks.
+				This block is removed by server before serving this template.
+			-->
+			<template origin="0.19.0"></template>
+		</template_remove>
+	</head>
+	<body style="padding:1em 2em;">
+		<h1>
+			Admin {{program.app_name}} V{{program.app_version}}
+		</h1>
+		<nav>
+			<ul>
+				<li><a href="/settings">Global settings</a></li>
+				<li><a href="/users">Manage users</a></li>
+			</ul>
+		</nav>
+	</body>
+</html>

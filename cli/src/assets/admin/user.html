@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>Admin: User: {{program.app_name}}</title>
+		<template_remove>
+			<!--
+				Please do not remove this `<template_remove>` block (even if you modify everything).
+				It is used for program upgrade checks.
+				This block is removed by server before serving this template.
+			-->
+			<template origin="0.19.0"></template>
+		</template_remove>
+	</head>
+	<body style="padding:1em 2em;">
+		<p><a href="/" class="backlink">⇽ admin home</a><br><a href="/users" class="backlink">⇽ users</a></p>
+		<h1>
+			User
+		</h1>
+		<form method="post">
+			<p>
+				<label>
+					🧍 new username :
+					<input type="text" name="new_username" id="new_username" placeholder="username" value="{{username}}">
+				</label>
+			</p>
+			<p>
+				<label>
+					🔑 new password (let empty if not changed) :
+					<input type="password" name="new_password" id="new_password" placeholder="password" value="">
+					{% if username %}
+					<br>
+					⚠️ if changed, all its tokens will be cleared.
+					{% endif %}
+				</label>
+			</p>
+			{% for message in send_result %}
+			<p>📢 {{ message }}</p>
+			{% endfor %}
+			<input type="hidden" name="form_token" value="{{ form_token }}">
+			<p>
+				<input type="submit" value="💾 save changes">
+			</p>
+		</form>
+		<form method="post">
+			<input type="hidden" name="new_username" id="new_username" value="">
+			<input type="hidden" name="new_password" id="new_password" value="">
+			<input type="hidden" name="form_token" value="{{ form_token }}">
+			<input type="submit" value="❌ delete this user">
+		</form>
+	</body>
+</html>

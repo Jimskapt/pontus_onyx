@@ -5,6 +5,7 @@ pub struct Settings {
 	pub domain: Option<String>,
 	pub domain_suffix: Option<String>,
 	pub port: Option<usize>,
+	pub admin_ui_port: Option<usize>,
 	pub token_lifetime_seconds: Option<u64>,
 	pub oauth_wait_seconds: Option<u64>,
 	pub logfile_path: String,
@@ -19,6 +20,7 @@ impl Default for Settings {
 			domain: Some(String::from("127.0.0.1")),
 			domain_suffix: None,
 			port: None,
+			admin_ui_port: None,
 			token_lifetime_seconds: Some(60 * 60),
 			oauth_wait_seconds: Some(2),
 			logfile_path: String::from("server.log"),
@@ -83,6 +85,8 @@ fn pbw1cgzctiqe163() {
 	let state = ProgramState {
 		http_port: 8743,
 		https_port: None,
+		admin_ui_port: 7654,
+		settings_path: std::path::PathBuf::from(""),
 	};
 
 	assert_eq!(
@@ -104,6 +108,8 @@ fn ykf0gcnr7z2ko4wtx8uub() {
 	let state = ProgramState {
 		http_port: 8743,
 		https_port: None,
+		admin_ui_port: 7654,
+		settings_path: std::path::PathBuf::from(""),
 	};
 
 	assert_eq!(
@@ -125,6 +131,8 @@ fn wxpy6tncuwbbavvxi() {
 	let state = ProgramState {
 		http_port: 8743,
 		https_port: None,
+		admin_ui_port: 7654,
+		settings_path: std::path::PathBuf::from(""),
 	};
 
 	assert_eq!(
@@ -151,6 +159,8 @@ fn fpfxwrixa1jz7t() {
 	let state = ProgramState {
 		http_port: 8743,
 		https_port: Some(8743),
+		admin_ui_port: 7654,
+		settings_path: std::path::PathBuf::from(""),
 	};
 
 	assert_eq!(
@@ -173,6 +183,8 @@ fn xtgfpc3x1zcmb() {
 	let state = ProgramState {
 		http_port: 8743,
 		https_port: None,
+		admin_ui_port: 7654,
+		settings_path: std::path::PathBuf::from(""),
 	};
 
 	assert_eq!(
@@ -200,6 +212,8 @@ fn ekkvpuijzifxc() {
 	let state = ProgramState {
 		http_port: 80,
 		https_port: Some(2467),
+		admin_ui_port: 7654,
+		settings_path: std::path::PathBuf::from(""),
 	};
 
 	assert_eq!(
@@ -223,6 +237,8 @@ fn bj8n5zhu2oaaed55561ygk() {
 	let state = ProgramState {
 		http_port: 80,
 		https_port: None,
+		admin_ui_port: 7654,
+		settings_path: std::path::PathBuf::from(""),
 	};
 
 	assert_eq!(
@@ -246,6 +262,8 @@ fn d434yaaxfqcnd4j() {
 	let state = ProgramState {
 		http_port: 80,
 		https_port: Some(443),
+		admin_ui_port: 7654,
+		settings_path: std::path::PathBuf::from(""),
 	};
 
 	assert_eq!(
