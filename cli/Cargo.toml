@@ -1,23 +1,11 @@
 [package]
 name = "pontus_onyx_cli"
-
-[package.version]
-workspace = true
-
-[package.authors]
-workspace = true
-
-[package.edition]
-workspace = true
-
-[package.license]
-workspace = true
-
-[package.readme]
-workspace = true
-
-[package.repository]
-workspace = true
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
 
 [dependencies]
 pontus_onyx = { path = "../lib", features = ["actix_server"] }
@@ -40,6 +28,7 @@ tokio = "1.28.1"
 serde-encrypt = "0.7.0"
 dunce = "1.0.4"
 zeroize = "1.6.0"
+rpassword = "7.2.0"
 
 [dev-dependencies]
 pontus_onyx_engine_ram = { path = "../engine_ram" }

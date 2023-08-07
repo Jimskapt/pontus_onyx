@@ -1,6 +1,9 @@
 use rand::seq::IteratorRandom;
 use rand::Rng;
-use std::sync::{Arc, Mutex};
+use std::{
+	io::{BufRead, Write},
+	sync::{Arc, Mutex},
+};
 use tokio::sync::Mutex as AsyncMutex;
 
 const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
@@ -30,7 +33,7 @@ async fn main() -> std::io::Result<()> {
 	};
 
 	let settings_file_path =
-		dunce::canonicalize(if let Some(settings_file_path) = std::env::args().nth(1) {
+		if let Some(settings_file_path) = std::env::args().nth(1) {
 			let new_path = std::path::PathBuf::from(settings_file_path);
 
 			std::fs::create_dir_all(new_path.parent().unwrap()).ok();
@@ -45,8 +48,7 @@ async fn main() -> std::io::Result<()> {
 			std::fs::create_dir_all(&workspace).ok();
 
 			workspace.join("settings.toml")
-		})
-		.unwrap();
+		};
 
 	let settings = match std::fs::read_to_string(&settings_file_path) {
 		Ok(settings_file_content) => {
@@ -83,6 +85,8 @@ async fn main() -> std::io::Result<()> {
 			new_settings
 		}
 	};
+
+	let settings_file_path = dunce::canonicalize(settings_file_path).unwrap();
 
 	let log_file_path = if std::path::PathBuf::from(&settings.logfile_path).is_absolute() {
 		std::path::PathBuf::from(&settings.logfile_path)
@@ -132,8 +136,21 @@ async fn main() -> std::io::Result<()> {
 		),
 	);
 
-	// TODO : crate and add other policies
 	storage_db.add_policy(Box::new(NotSameUserPasswordPolicy {}));
+	storage_db.add_policy(Box::new(UserNotEasyToGuess {
+		banned_list: assets::EASY_TO_GUESS_USERS
+			.iter()
+			.map(|user| String::from(*user))
+			.collect(),
+	}));
+	storage_db.add_policy(Box::new(PasswordNotEasyToGuess {
+		banned_list: assets::MOST_USED_PASSWORDS
+			.split('\n')
+			.into_iter()
+			.map(|password| String::from(password))
+			.collect(),
+	}));
+	storage_db.add_policy(Box::new(PasswordNotTooShort { min_char_count: 6 }));
 
 	let userfile_path = if std::path::PathBuf::from(&settings.userfile_path).is_absolute() {
 		std::path::PathBuf::from(&settings.userfile_path)
@@ -197,35 +214,90 @@ async fn main() -> std::io::Result<()> {
 		}
 	}
 
-	if cfg!(debug_assertions) && !has_users {
-		let user = {
-			let mut user = String::new();
-			let mut rng_limit = rand::thread_rng();
-			for _ in 1..rng_limit.gen_range(16..32) {
-				let mut rng_item = rand::thread_rng();
-				user.push(ALPHABET.chars().choose(&mut rng_item).unwrap());
+	if !has_users {
+		if !cfg!(debug_assertions) {
+			let mut admin_user_created = false;
+
+			while !admin_user_created {
+				let mut admin_username = String::new();
+				print!("\t✏️ Please type new admin username (or abort all with Ctrl + C) : ");
+				std::io::stdout().flush().ok();
+				if let Err(err) = std::io::stdin().lock().read_line(&mut admin_username) {
+					println!("\t\t❌ Can not read your input : {err}");
+				}
+				let admin_username = admin_username.trim();
+
+				let mut admin_password = String::new();
+				let mut input_is_correct = false;
+				while !input_is_correct {
+					admin_password = String::new();
+
+					print!("\t✏️ Please type new password for `{admin_username}` (it do not shows for security purposes) : ");
+					std::io::stdout().flush().ok();
+
+					match rpassword::read_password() {
+						Ok(password1) => {
+							print!("\t✏️ Please type again this password to confirm it : ");
+							std::io::stdout().flush().ok();
+
+							match rpassword::read_password() {
+								Ok(password2) => {
+									if password1 == password2 {
+										admin_password = String::from(password2.trim());
+										input_is_correct = true;
+									} else {
+										println!("\t❌ Passwords does not match, please try again");
+									}
+								}
+								Err(err) => println!("\t\t❌ Can not read your input : {err}"),
+							}
+						}
+						Err(err) => println!("\t\t❌ Can not read your input : {err}"),
+					}
+				}
+
+				match storage_db.create_user(admin_username, &mut admin_password) {
+					Ok(()) => {
+						log::info!(
+							"admin user `{admin_username}` has been successfully created"
+						);
+						admin_user_created = true;
+					}
+					Err(err) => {
+						log::error!("can not create admin user : {err}");
+					}
+				}
 			}
-			user
-		};
+		} else {
+			let user = {
+				let mut user = String::new();
+				let mut rng_limit = rand::thread_rng();
+				for _ in 1..rng_limit.gen_range(16..32) {
+					let mut rng_item = rand::thread_rng();
+					user.push(ALPHABET.chars().choose(&mut rng_item).unwrap());
+				}
+				user
+			};
 
-		let mut password = {
-			let mut password = String::new();
-			let mut rng_limit = rand::thread_rng();
-			for _ in 1..rng_limit.gen_range(16..32) {
-				let mut rng_item = rand::thread_rng();
-				password.push(ALPHABET.chars().choose(&mut rng_item).unwrap());
-			}
-			password
-		};
+			let mut password = {
+				let mut password = String::new();
+				let mut rng_limit = rand::thread_rng();
+				for _ in 1..rng_limit.gen_range(16..32) {
+					let mut rng_item = rand::thread_rng();
+					password.push(ALPHABET.chars().choose(&mut rng_item).unwrap());
+				}
+				password
+			};
 
-		storage_db.create_user(&user, &mut password).unwrap();
-		let token = storage_db
-			.generate_token(&user, &mut password, "*:rw")
-			.unwrap();
+			storage_db.create_user(&user, &mut password).unwrap();
+			let token = storage_db
+				.generate_token(&user, &mut password, "*:rw")
+				.unwrap();
 
-		log::debug!("debug admin user : {}", user);
-		log::debug!("debug admin password : {}", password);
-		log::debug!("debug admin token : Bearer {}", token.0);
+			log::debug!("debug admin user : {}", user);
+			log::debug!("debug admin password : {}", password);
+			log::debug!("debug admin token : Bearer {}", token.0);
+		}
 	}
 
 	let storage_db = Arc::new(AsyncMutex::new(storage_db));
@@ -865,9 +937,81 @@ impl pontus_onyx::security::UserSecurityPolicy for NotSameUserPasswordPolicy {
 	}
 	fn check(&self, username: &str, password: &str) -> Result<(), String> {
 		if username.trim().to_lowercase() == password.trim().to_lowercase() {
-			return Err(String::from(
-				"the username and password should not be the same",
+			return Err(self.get_description());
+		}
+
+		Ok(())
+	}
+}
+
+struct UserNotEasyToGuess {
+	pub banned_list: Vec<String>,
+}
+impl pontus_onyx::security::UserSecurityPolicy for UserNotEasyToGuess {
+	fn get_name(&self) -> String {
+		String::from("user should not be easy to guess")
+	}
+	fn get_description(&self) -> String {
+		String::from("the username should not be easy to guess")
+	}
+	fn check(&self, username: &str, _password: &str) -> Result<(), String> {
+		let list: Vec<String> = self
+			.banned_list
+			.iter()
+			.map(|user| user.trim().to_lowercase())
+			.collect();
+
+		if list.contains(&username.trim().to_lowercase()) {
+			return Err(format!(
+				"the username `{username}` should not be easy to guess",
 			));
+		}
+
+		Ok(())
+	}
+}
+
+struct PasswordNotEasyToGuess {
+	pub banned_list: Vec<String>,
+}
+impl pontus_onyx::security::UserSecurityPolicy for PasswordNotEasyToGuess {
+	fn get_name(&self) -> String {
+		String::from("the password should not be easy to guess")
+	}
+	fn get_description(&self) -> String {
+		String::from("the password should not be easy to guess")
+	}
+	fn check(&self, _username: &str, password: &str) -> Result<(), String> {
+		let list: Vec<String> = self
+			.banned_list
+			.iter()
+			.map(|user| user.trim().to_lowercase())
+			.collect();
+
+		if list.contains(&password.trim().to_lowercase()) {
+			return Err(self.get_description());
+		}
+
+		Ok(())
+	}
+}
+
+struct PasswordNotTooShort {
+	pub min_char_count: usize,
+}
+impl pontus_onyx::security::UserSecurityPolicy for PasswordNotTooShort {
+	fn get_name(&self) -> String {
+		String::from("the password should not be too short")
+	}
+	fn get_description(&self) -> String {
+		format!(
+			"the password should be at least {} characters of length",
+			self.min_char_count
+		)
+	}
+	fn check(&self, _username: &str, password: &str) -> Result<(), String> {
+		if password.chars().count() < self.min_char_count {
+			return Err(self.get_description());
 		}
 
 		Ok(())

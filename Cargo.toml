@@ -13,4 +13,5 @@ members = [
     "engine_ram",
     "engine_filesystem",
     "engine_localstorage",
+    "web_client",
 ]

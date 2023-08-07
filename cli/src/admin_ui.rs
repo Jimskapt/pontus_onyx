@@ -31,7 +31,7 @@ pub fn run<E: pontus_onyx::Engine + Send + 'static>(
 
 	match bind {
 		Ok(bind) => {
-			println!("📢 Begginers : please open http://{}/", addr);
+			println!("📢 Begginers : please open http://{addr}/");
 			println!("(👮 security warning : do not expose this address outside this computer)");
 
 			let run = bind.run();

@@ -4,24 +4,12 @@ description = "An engine to use with pontus_onyx crate in order to store data in
 keywords = ["remotestorage", "database", "pontus_onyx", "pontus_onyx_engine", "file"]
 categories = ["database", "database-implementations"]
 documentation = "https://docs.rs/pontus_onyx/"
-
-[package.version]
-workspace = true
-
-[package.authors]
-workspace = true
-
-[package.edition]
-workspace = true
-
-[package.license]
-workspace = true
-
-[package.readme]
-workspace = true
-
-[package.repository]
-workspace = true
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+readme.workspace = true
+repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
