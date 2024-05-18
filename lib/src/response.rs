@@ -1,3 +1,4 @@
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Response {
 	pub request: crate::Request,
 	pub status: ResponseStatus,
@@ -11,7 +12,7 @@ impl Response {
 	}
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum ResponseStatus {
 	Performed(crate::EngineResponse),
 	Unauthorized(crate::AccessError),
@@ -168,13 +169,12 @@ impl From<Response> for actix_web::HttpResponse {
 						if let Some(child_name) = child_path.last() {
 							match child {
 								crate::item::Item::Document {
-									etag,
+									etag: _,
 									content,
 									content_type,
 									last_modified,
 								} => {
 									items_result[format!("{}", child_name)] = serde_json::json!({
-										"ETag": etag,
 										"Content-Type": content_type,
 										"Content-Length": content.as_ref().map(|content| content.into_inner().len()).unwrap_or(0),
 										"Last-Modified": if let Some(last_modified) = last_modified {

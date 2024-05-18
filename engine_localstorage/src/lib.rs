@@ -418,7 +418,7 @@ impl StorageProxy {
 	fn get_item(&self, key: impl Into<String>) -> Result<Option<String>, wasm_bindgen::JsValue> {
 		match self {
 			StorageProxy::Native(inner) => inner.get_item(&key.into()),
-			StorageProxy::Simulated => Ok(MOCK.lock().unwrap().get(&key.into()).map(Clone::clone)),
+			StorageProxy::Simulated => Ok(MOCK.lock().unwrap().get(&key.into()).cloned()),
 		}
 	}
 

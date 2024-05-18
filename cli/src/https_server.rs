@@ -19,14 +19,14 @@ pub fn run<T: pontus_onyx::Engine + Send + 'static>(
 						let cert_file = &mut std::io::BufReader::new(cert_content);
 						match rustls_pemfile::certs(cert_file) {
 							Ok(cert_chain) => match rustls_pemfile::pkcs8_private_keys(key_file) {
-								Ok(keys) => match keys.get(0) {
+								Ok(keys) => match keys.first() {
 									Some(key) => {
 										let server_config = rustls::ServerConfig::builder()
 											.with_safe_defaults()
 											.with_no_client_auth()
 											.with_single_cert(
 												vec![rustls::Certificate(
-													cert_chain.get(0).unwrap().clone(),
+													cert_chain.first().unwrap().clone(),
 												)],
 												rustls::PrivateKey(key.clone()),
 											);
@@ -50,7 +50,7 @@ pub fn run<T: pontus_onyx::Engine + Send + 'static>(
 
 												match bind {
 													Ok(bind) => {
-														log::info!("starting securised server at https://{addr}");
+														log::info!("starting securised data server at https://{addr}");
 
 														let run = bind.run();
 
@@ -60,7 +60,7 @@ pub fn run<T: pontus_onyx::Engine + Send + 'static>(
 														}))
 													},
 													Err(err) => {
-														Err(format!("can not set up the securised server : {err}"))
+														Err(format!("can not set up the securised data server : {err}"))
 													}
 												}
 											}

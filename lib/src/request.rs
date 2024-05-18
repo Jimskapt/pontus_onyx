@@ -3,7 +3,7 @@ use actix_web::HttpMessage;
 
 use crate::{item::Path, security::Origin, Limit, Method};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Request {
 	pub method: Method,
 	pub path: Path,

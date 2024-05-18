@@ -10,7 +10,7 @@ mod request;
 mod response;
 pub mod security;
 mod settings;
-mod user;
+pub mod user;
 
 pub use database::*;
 pub use engine::*;
@@ -20,7 +20,7 @@ pub use method::*;
 pub use request::*;
 pub use response::*;
 pub use settings::*;
-pub use user::*;
+pub use user::User;
 
 const ACCESS_TOKEN_ALPHABET: &str =
 	"abcdefghijklmnopqrstuvwxyz-0123456789_ABCDEFGHIJKLMNOPQRSTUVWXYZ";

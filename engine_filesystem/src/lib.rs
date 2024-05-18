@@ -30,7 +30,7 @@ impl pontus_onyx::Engine for FileSystemEngine {
 
 		let file_exists = self
 			.root_path
-			.join(&format!("{}", request.path.clone()))
+			.join(format!("{}", request.path.clone()))
 			.exists();
 
 		if request.method == Method::Put {
@@ -84,12 +84,11 @@ impl pontus_onyx::Engine for FileSystemEngine {
 				.unwrap();
 
 			let response = match std::fs::write(
-				&self.root_path.join(format!("{}", path)),
+				self.root_path.join(format!("{}", path)),
 				new_content.into_inner(),
 			)
 			.and(std::fs::write(
-				&self
-					.root_path
+				self.root_path
 					.join(format!("{}", path.as_datafile(".itemdata.toml"))),
 				new_item_toml,
 			)) {
@@ -492,7 +491,7 @@ fn list_folder(
 ) -> BTreeMap<Path, Item> {
 	let mut children = BTreeMap::new();
 
-	for el in std::fs::read_dir(&root_path.join(&subfolder)).unwrap() {
+	for el in std::fs::read_dir(root_path.join(&subfolder)).unwrap() {
 		let entry = el.unwrap();
 
 		if !entry.file_name().to_str().unwrap().contains(".itemdata.") {

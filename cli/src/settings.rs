@@ -6,8 +6,8 @@ pub struct Settings {
 	pub domain_suffix: Option<String>,
 	pub port: Option<usize>,
 	pub admin_ui_port: Option<usize>,
-	pub token_lifetime_seconds: Option<u64>,
-	pub oauth_wait_seconds: Option<u64>,
+	pub token_lifetime_seconds: Option<usize>,
+	pub oauth_wait_seconds: Option<usize>,
 	pub logfile_path: String,
 	pub userfile_path: String,
 	pub data_path: String,
@@ -51,7 +51,7 @@ pub fn build_server_address(settings: &Settings, program_state: &ProgramState) -
 	let mut domain = settings.domain.as_ref().unwrap_or(&localhost).clone();
 	if let Some(force_domain) = &settings.domain {
 		if !force_domain.trim().is_empty() {
-			domain = force_domain.clone();
+			domain.clone_from(force_domain);
 		}
 	}
 

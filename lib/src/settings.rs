@@ -1,7 +1,7 @@
 #[derive(zeroize::Zeroize, zeroize::ZeroizeOnDrop)]
 pub struct DatabaseSettings {
 	#[zeroize(skip)]
-	pub token_lifetime_seconds: Option<i64>,
+	pub token_lifetime_seconds: Option<usize>,
 	#[zeroize(skip)]
 	pub userfile_path: Option<std::path::PathBuf>,
 	pub encryption_key: Option<[u8; 32]>,

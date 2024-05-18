@@ -43,6 +43,7 @@ impl<E: Engine> Database<E> {
 		&mut self,
 		username: impl Into<String>,
 		password: &mut str,
+		special_roles: &[crate::user::UserAdminRole],
 	) -> Result<(), String> {
 		let username = username.into();
 
@@ -66,6 +67,8 @@ impl<E: Engine> Database<E> {
 					username,
 					password: String::from(password),
 					tokens: BTreeMap::new(),
+					special_roles: special_roles.to_vec(),
+					admin_tokens: BTreeMap::new(),
 				});
 			}
 		}
@@ -117,6 +120,20 @@ impl<E: Engine> Database<E> {
 			Some(old_password) => Ok(old_password),
 			None => Err(String::from("username not found")),
 		}
+	}
+	pub fn get_user_metadata(
+		&self,
+		username: impl Into<String>,
+	) -> Option<crate::user::UserMetadata> {
+		let username = username.into();
+
+		self.users
+			.iter()
+			.find(|user| user.username == username)
+			.map(|user| crate::user::UserMetadata {
+				username: user.username.clone(),
+				special_roles: user.special_roles.clone(),
+			})
 	}
 	pub fn get_users_list(&self) -> Vec<String> {
 		self.users
@@ -463,7 +480,7 @@ impl<E: Engine> Database<E> {
 	}
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum AccessError {
 	CanNotListPublic,
 	MissingToken,

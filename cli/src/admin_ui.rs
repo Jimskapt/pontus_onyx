@@ -1,4 +1,5 @@
 use std::{
+	collections::BTreeMap,
 	path::PathBuf,
 	sync::{Arc, Mutex},
 };
@@ -31,7 +32,7 @@ pub fn run<E: pontus_onyx::Engine + Send + 'static>(
 
 	match bind {
 		Ok(bind) => {
-			println!("📢 Begginers : please open http://{addr}/");
+			println!("🚸 Begginers : please open your administration panel : http://{addr}/");
 			println!("(👮 security warning : do not expose this address outside this computer)");
 
 			let run = bind.run();
@@ -155,6 +156,8 @@ pub async fn get_users(
 struct AdminUiUserContext {
 	program: AdminUiContext,
 	username: Option<String>,
+	user_roles: Vec<pontus_onyx::user::UserAdminRole>,
+	all_available_roles: BTreeMap<pontus_onyx::user::UserAdminRole, String>,
 	form_token: String,
 	send_result: Vec<String>,
 }
@@ -169,9 +172,28 @@ pub struct AdminUiUserQueryInfo {
 pub async fn get_user(
 	query: actix_web::web::Query<AdminUiUserQueryInfo>,
 	form_tokens: actix_web::web::Data<std::sync::Arc<std::sync::Mutex<Vec<crate::FormToken>>>>,
+	database: actix_web::web::Data<
+		Arc<AsyncMutex<pontus_onyx::Database<pontus_onyx_engine_filesystem::FileSystemEngine>>>,
+	>,
 	request: actix_web::HttpRequest,
 ) -> impl actix_web::Responder {
 	let username = query.username.clone();
+
+	let mut all_available_roles = BTreeMap::new();
+	for role in pontus_onyx::user::ALL_ROLES {
+		all_available_roles.insert(role.clone(), format!("{role}"));
+	}
+
+	let user_roles = if let Some(username) = &username {
+		database
+			.lock()
+			.await
+			.get_user_metadata(username)
+			.map(|metadata| metadata.special_roles)
+			.unwrap_or_else(Vec::new)
+	} else {
+		vec![]
+	};
 
 	let template = std::fs::read_to_string("assets/admin/user.html")
 		.unwrap_or_else(|_| String::from(crate::assets::ADMIN_UI_USER));
@@ -207,6 +229,8 @@ pub async fn get_user(
 		},
 		username,
 		form_token,
+		user_roles,
+		all_available_roles,
 		send_result: if let Some(send_result) = &query.send_result {
 			if send_result.trim() == "" {
 				vec![]
@@ -242,6 +266,7 @@ pub async fn get_user(
 pub struct UserFormData {
 	new_username: String,
 	new_password: String,
+	new_roles: pontus_onyx::user::UserAdminRole,
 	form_token: String,
 }
 
@@ -258,6 +283,7 @@ pub async fn post_user(
 
 	let new_username = form_data.new_username.clone();
 	let new_password = form_data.new_password.clone();
+	let new_roles = form_data.new_roles.clone();
 	let form_token = form_data.form_token.clone();
 
 	let form_token_found = form_tokens.lock().unwrap().iter_mut().any(|token| {
@@ -290,7 +316,7 @@ pub async fn post_user(
 
 		if remove {
 			if !new_username.is_empty() {
-				match db.create_user(new_username.clone(), &mut new_password) {
+				match db.create_user(new_username.clone(), &mut new_password, &[new_roles]) {
 					Ok(()) => {
 						format!("/user?username={new_username}&send_result=edit_ok",)
 					}

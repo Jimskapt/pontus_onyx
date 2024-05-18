@@ -14,7 +14,7 @@ pub trait Engine {
 	fn root_for_tests(&self) -> BTreeMap<crate::item::Path, Item>;
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum EngineResponse {
 	GetSuccessDocument(Item),
 	GetSuccessFolder {

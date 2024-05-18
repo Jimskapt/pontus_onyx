@@ -9,7 +9,7 @@ use crate::{
 fn generate_token() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("my_user", &mut String::from("my_password"))
+		.create_user("my_user", &mut String::from("my_password"), &[])
 		.unwrap();
 
 	assert!(database
@@ -141,7 +141,7 @@ async fn should_not_pass_without_token() {
 async fn should_pass_with_right_token() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
@@ -165,7 +165,7 @@ async fn should_pass_with_right_token() {
 async fn should_not_pass_with_wrong_token() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_b:r")
@@ -191,7 +191,7 @@ async fn should_not_pass_with_wrong_token() {
 async fn should_not_pass_with_token_but_wrong_method() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
@@ -226,7 +226,7 @@ async fn should_not_pass_with_token_but_wrong_method() {
 async fn get_no_if_match() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
@@ -252,7 +252,7 @@ async fn get_no_if_match() {
 async fn get_if_match() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
@@ -289,7 +289,7 @@ async fn get_if_match() {
 async fn get_if_none_match() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
@@ -315,7 +315,7 @@ async fn get_if_none_match() {
 async fn get_no_if_none_match() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
@@ -352,7 +352,7 @@ async fn get_no_if_none_match() {
 async fn get_if_none_match_all() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")
@@ -378,7 +378,7 @@ async fn get_if_none_match_all() {
 async fn put_content_not_changed() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
@@ -409,7 +409,7 @@ async fn put_content_not_changed() {
 async fn put_folder_path() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
@@ -440,7 +440,7 @@ async fn put_folder_path() {
 async fn put_folder_item() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
@@ -469,7 +469,7 @@ async fn put_folder_item() {
 async fn put_none_item() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
@@ -494,7 +494,7 @@ async fn put_none_item() {
 async fn put_not_existing() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
@@ -530,7 +530,7 @@ async fn put_not_existing() {
 async fn put_existing() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:rw")
@@ -566,7 +566,7 @@ async fn put_existing() {
 async fn get_not_found() {
 	let mut database = Database::new(<EmptyEngineForTests as Engine>::new_for_tests());
 	database
-		.create_user("username", &mut String::from("password"))
+		.create_user("username", &mut String::from("password"), &[])
 		.unwrap();
 	let token = database
 		.generate_token("username", &mut String::from("password"), "folder_a:r")

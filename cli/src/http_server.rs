@@ -25,7 +25,7 @@ pub fn run<T: pontus_onyx::Engine + Send + 'static>(
 
 	match bind {
 		Ok(bind) => {
-			log::info!("starting unsafe server at http://{addr}");
+			log::info!("starting unsafe data server at http://{addr}");
 
 			let run = bind.run();
 
@@ -34,6 +34,6 @@ pub fn run<T: pontus_onyx::Engine + Send + 'static>(
 				sys.block_on(run)
 			}))
 		}
-		Err(err) => Err(format!("can not set up the unsafe server : {err}")),
+		Err(err) => Err(format!("can not set up the unsafe data server : {err}")),
 	}
 }

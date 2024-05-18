@@ -38,7 +38,7 @@ async fn build_test_server() -> (impl FnOnce(&mut actix_web::web::ServiceConfig)
 	);
 
 	database
-		.create_user(USER, &mut String::from(PASSWORD))
+		.create_user(USER, &mut String::from(PASSWORD), &[])
 		.unwrap();
 	let token = database
 		.generate_token(USER, &mut String::from(PASSWORD), "alpha:rw beta:r")
@@ -46,7 +46,11 @@ async fn build_test_server() -> (impl FnOnce(&mut actix_web::web::ServiceConfig)
 
 	// temporary admin :
 	database
-		.create_user("trdh8gb45sg6t", &mut String::from("56swefvrwsd3g96sgw"))
+		.create_user(
+			"trdh8gb45sg6t",
+			&mut String::from("56swefvrwsd3g96sgw"),
+			&[],
+		)
 		.unwrap();
 	let admin_token = database
 		.generate_token(

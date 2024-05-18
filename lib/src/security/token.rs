@@ -38,7 +38,7 @@ impl TokenMetadata {
 impl TokenMetadata {
 	pub fn check(
 		&self,
-		token_lifetime_seconds: Option<i64>,
+		token_lifetime_seconds: Option<usize>,
 		request: &crate::Request,
 	) -> Result<(), Vec<TokenValidityError>> {
 		let mut errors = vec![];
@@ -66,12 +66,12 @@ impl TokenMetadata {
 	}
 	fn check_lifetime(
 		&self,
-		token_lifetime_seconds: Option<i64>,
+		token_lifetime_seconds: Option<usize>,
 	) -> Result<(), TokenValidityError> {
 		if let Some(token_lifetime_seconds) = token_lifetime_seconds {
 			let actual_lifetime = (self.creation - time::OffsetDateTime::now_utc())
 				.whole_seconds()
-				.abs();
+				.unsigned_abs() as usize;
 
 			if actual_lifetime >= token_lifetime_seconds {
 				return Err(TokenValidityError::LifetimeExpirated(actual_lifetime));
@@ -208,13 +208,13 @@ fn joker_modules() {
 	);
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum TokenValidityError {
-	LifetimeExpirated(i64),
+	LifetimeExpirated(usize),
 	RequestError(RequestValidityError),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum RequestValidityError {
 	OutOfModuleScope,
 	UnallowedMethod,

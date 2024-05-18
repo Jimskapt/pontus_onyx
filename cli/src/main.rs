@@ -7,7 +7,7 @@ use std::{
 use tokio::sync::Mutex as AsyncMutex;
 
 const ALPHABET: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz";
-const DEFAULT_WORKSPACE_NAME: &str = "workspace";
+const DEFAULT_WORKSPACE_NAME: &str = "pontus_onyx_workspace";
 
 const DEFAULT_ENCRYPTION_KEY: [u8; 32] = [
 	96, 247, 49, 178, 165, 246, 126, 169, 201, 231, 44, 4, 253, 80, 49, 233, 248, 153, 162, 186,
@@ -32,23 +32,22 @@ async fn main() -> std::io::Result<()> {
 		simplelog::LevelFilter::Info
 	};
 
-	let settings_file_path =
-		if let Some(settings_file_path) = std::env::args().nth(1) {
-			let new_path = std::path::PathBuf::from(settings_file_path);
+	let settings_file_path = if let Some(settings_file_path) = std::env::args().nth(1) {
+		let new_path = std::path::PathBuf::from(settings_file_path);
 
-			std::fs::create_dir_all(new_path.parent().unwrap()).ok();
+		std::fs::create_dir_all(new_path.parent().unwrap()).ok();
 
-			new_path
-		} else {
-			let workspace = std::path::PathBuf::from(std::env::args().next().unwrap())
-				.parent()
-				.unwrap()
-				.join(DEFAULT_WORKSPACE_NAME);
+		new_path
+	} else {
+		let workspace = std::path::PathBuf::from(std::env::args().next().unwrap())
+			.parent()
+			.unwrap()
+			.join(DEFAULT_WORKSPACE_NAME);
 
-			std::fs::create_dir_all(&workspace).ok();
+		std::fs::create_dir_all(&workspace).ok();
 
-			workspace.join("settings.toml")
-		};
+		workspace.join("settings.toml")
+	};
 
 	let settings = match std::fs::read_to_string(&settings_file_path) {
 		Ok(settings_file_content) => {
@@ -146,8 +145,7 @@ async fn main() -> std::io::Result<()> {
 	storage_db.add_policy(Box::new(PasswordNotEasyToGuess {
 		banned_list: assets::MOST_USED_PASSWORDS
 			.split('\n')
-			.into_iter()
-			.map(|password| String::from(password))
+			.map(String::from)
 			.collect(),
 	}));
 	storage_db.add_policy(Box::new(PasswordNotTooShort { min_char_count: 6 }));
@@ -256,11 +254,13 @@ async fn main() -> std::io::Result<()> {
 					}
 				}
 
-				match storage_db.create_user(admin_username, &mut admin_password) {
+				match storage_db.create_user(
+					admin_username,
+					&mut admin_password,
+					pontus_onyx::user::ALL_ROLES,
+				) {
 					Ok(()) => {
-						log::info!(
-							"admin user `{admin_username}` has been successfully created"
-						);
+						log::info!("admin user `{admin_username}` has been successfully created");
 						admin_user_created = true;
 					}
 					Err(err) => {
@@ -289,7 +289,9 @@ async fn main() -> std::io::Result<()> {
 				password
 			};
 
-			storage_db.create_user(&user, &mut password).unwrap();
+			storage_db
+				.create_user(&user, &mut password, pontus_onyx::user::ALL_ROLES)
+				.unwrap();
 			let token = storage_db
 				.generate_token(&user, &mut password, "*:rw")
 				.unwrap();
@@ -517,7 +519,7 @@ async fn get_oauth(
 	{
 		Some(token) => {
 			token.forged = time::OffsetDateTime::now_utc();
-			token.value = new_form_token.clone();
+			token.value.clone_from(&new_form_token);
 
 			true
 		}
@@ -526,7 +528,7 @@ async fn get_oauth(
 
 	if !updated {
 		let new_token = FormToken::new(&ip, &FormTokenUsage::Oauth);
-		new_form_token = new_token.value.clone();
+		new_form_token.clone_from(&new_token.value);
 
 		form_tokens.lock().unwrap().push(new_token);
 	}

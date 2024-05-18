@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 pub enum Method {
 	Head,
 	Get,

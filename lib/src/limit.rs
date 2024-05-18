@@ -1,4 +1,4 @@
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum Limit {
 	IfMatch(crate::item::Etag),
 	IfNoneMatch(crate::item::Etag),
