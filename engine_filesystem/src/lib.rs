@@ -13,6 +13,12 @@ pub struct EngineSettings {
 	pub path: std::path::PathBuf,
 }
 
+impl FileSystemEngine {
+	pub fn get_root_path(&self) -> std::path::PathBuf {
+		self.root_path.clone()
+	}
+}
+
 #[async_trait::async_trait]
 impl pontus_onyx::Engine for FileSystemEngine {
 	type Settings = EngineSettings;

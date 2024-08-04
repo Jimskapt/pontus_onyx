@@ -78,7 +78,7 @@ impl pontus_onyx::Engine for LocalStorageEngine {
 						return EngineResponse::InternalError(err);
 					}
 				};
-				let exists = storage.get_item(&target_path).unwrap().is_none();
+				let exists = storage.get_item(&target_path).unwrap().is_some();
 
 				match storage.set_item(&target_path, serde_json::to_string(&new_item).unwrap()) {
 					Ok(()) => {

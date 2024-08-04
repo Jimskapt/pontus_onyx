@@ -5,3 +5,6 @@
 *.key
 
 **.gitignore.*
+
+pontus_onyx_workspace/
+pontus_onyx_cli-start.html

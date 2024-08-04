@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>START {{app_name}}</title>
+	<template_remove>
+		<!--
+				Please do not remove this `<template_remove>` block (even if you modify everything).
+				It is used for program upgrade checks.
+				This block is removed by server before serving this template.
+			-->
+		<template origin="0.19.0"></template>
+	</template_remove>
+</head>
+
+<body style="padding:1em 2em;">
+	<h1>Starting page // {{app_name}} V{{app_version}}</h1>
+
+	<h3>📖 Documentation</h3>
+	<p><a href="#"><i>TODO</i></a></p>
+
+	<fieldset>
+		<legend><h2>🔒 Local ressources</h2></legend>
+
+		<h3>👮 Administration</h3>
+		<p>
+			<a href="http://{{admin_addr}}">http://{{admin_addr}}</a>
+			<br>
+			<i>(security warning : do not expose this address outside this computer)</i>
+		</p>
+	
+		<h3>💾 Path to data</h3>
+		<p><a href="file://{{data_path}}">{{data_path}}</a></p>
+	</fieldset>
+
+	<fieldset>
+		<legend><h2>🌐 Public ressources</h2></legend>
+
+		<h3>🫵 Webfinger start point</h3>
+			<p><a href="http://{{http_server}}/.well-known/webfinger">http://{{http_server}}/.well-known/webfinger</a></p>
+		
+		<h3>💬 Unsecure data API (HTTP only)</h3>
+		<p><a href="http://{{http_server}}/">http://{{http_server}}/</a></p>
+
+		{% if https_server %}
+		<h3>💬 Secure data API (HTTPS)</h3>
+		<p><a href="https://{{https_server}}/">https://{{https_server}}/</a></p>
+		{% else %}
+		<h3>❌ No secure data API (HTTPS)</h3>
+		<!-- TODO : link to documentation -->
+		{% endif %}
+	</fieldset>
+</body>
+
+</html>

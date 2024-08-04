@@ -5,44 +5,64 @@ use std::{
 };
 use tokio::sync::Mutex as AsyncMutex;
 
-pub fn run<E: pontus_onyx::Engine + Send + 'static>(
+pub struct AdminUI<E: pontus_onyx::Engine + Send + 'static> {
 	settings: crate::settings::Settings,
 	database: Arc<AsyncMutex<pontus_onyx::Database<E>>>,
 	program_state: Arc<Mutex<crate::ProgramState>>,
 	form_tokens: Arc<Mutex<Vec<crate::FormToken>>>,
-) -> Result<std::thread::JoinHandle<Result<(), std::io::Error>>, String> {
-	let host = String::from("127.0.0.1");
-	let port = program_state.lock().unwrap().admin_ui_port;
-	let addr: String = format!("{host}:{port}");
+}
 
-	let bind = actix_web::HttpServer::new(move || {
-		actix_web::App::new()
-			.wrap(actix_web::middleware::Logger::default())
-			.app_data(actix_web::web::Data::new(settings.clone()))
-			.app_data(actix_web::web::Data::new(database.clone()))
-			.app_data(actix_web::web::Data::new(program_state.clone()))
-			.app_data(actix_web::web::Data::new(form_tokens.clone()))
-			.service(get_users)
-			.service(get_user)
-			.service(post_user)
-			.service(get_settings)
-			.service(index)
-	})
-	.bind(addr.clone());
-
-	match bind {
-		Ok(bind) => {
-			println!("🚸 Begginers : please open your administration panel : http://{addr}/");
-			println!("(👮 security warning : do not expose this address outside this computer)");
-
-			let run = bind.run();
-
-			Ok(std::thread::spawn(move || {
-				let sys = actix_web::rt::System::new();
-				sys.block_on(run)
-			}))
+impl<E: pontus_onyx::Engine + Send + 'static> AdminUI<E> {
+	pub fn new(
+		settings: crate::settings::Settings,
+		database: Arc<AsyncMutex<pontus_onyx::Database<E>>>,
+		program_state: Arc<Mutex<crate::ProgramState>>,
+		form_tokens: Arc<Mutex<Vec<crate::FormToken>>>,
+	) -> Self {
+		Self {
+			settings,
+			database,
+			program_state,
+			form_tokens,
 		}
-		Err(err) => Err(format!("can start admin ui server : {err}")),
+	}
+
+	pub fn run(self) -> Result<std::thread::JoinHandle<Result<(), std::io::Error>>, String> {
+		let addr = self.get_addr();
+
+		let bind = actix_web::HttpServer::new(move || {
+			actix_web::App::new()
+				.wrap(actix_web::middleware::Logger::default())
+				.app_data(actix_web::web::Data::new(self.settings.clone()))
+				.app_data(actix_web::web::Data::new(self.database.clone()))
+				.app_data(actix_web::web::Data::new(self.program_state.clone()))
+				.app_data(actix_web::web::Data::new(self.form_tokens.clone()))
+				.service(get_users)
+				.service(get_user)
+				.service(post_user)
+				.service(get_settings)
+				.service(index)
+		})
+		.bind(addr.clone());
+
+		match bind {
+			Ok(bind) => {
+				let run = bind.run();
+
+				Ok(std::thread::spawn(move || {
+					let sys = actix_web::rt::System::new();
+					sys.block_on(run)
+				}))
+			}
+			Err(err) => Err(format!("can start admin ui server : {err}")),
+		}
+	}
+
+	pub fn get_addr(&self) -> String {
+		let host = String::from("127.0.0.1");
+		let port = self.program_state.lock().unwrap().admin_ui_port;
+
+		format!("{host}:{port}")
 	}
 }
 

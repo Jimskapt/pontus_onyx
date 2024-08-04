@@ -1,4 +1,4 @@
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct Response {
 	pub request: crate::Request,
 	pub status: ResponseStatus,

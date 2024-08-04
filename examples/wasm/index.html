@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Pontus-Onyx WASM demo</title>
+		<script type="module" src="index.js" defer></script>
+	</head>
+
+	<body>
+		<h1>Pontus-Onyx WASM demo</h1>
+
+		<p>
+			This form will save the content of this field in the localStorage of your browser.<br>
+			After modifing value then clicking the save button, you can refresh this page and it will load back this value in this field, from your browser memory.<br>
+			Your can also force it manually, clicking reload button.
+		</p>
+
+		<noscript style="background:yellow;padding:0.5em;">⚠️ You need to activate Javascript in your browser in order to use this webassembly.</noscript>
+
+		<form method="post">
+			<input type="text" id="input" value="" placeholder="your content to save here">
+			<input type="submit" id="save" value="💾 SAVE">
+			<input type="reset" id="reload" value="🔄️ RELOAD">
+			<input type="reset" id="delete" value="🗑️ DELETE">
+		</form>
+
+		<div id="logs"></div>
+	</body>
+</html>

@@ -313,28 +313,98 @@ async fn main() -> std::io::Result<()> {
 
 	let mut thread_handles = vec![];
 
-	thread_handles.push(
-		admin_ui::run(
+	let admin_ui = admin_ui::AdminUI::new(
+		settings.clone(),
+		storage_db.clone(),
+		program_state.clone(),
+		form_tokens.clone(),
+	);
+
+	let http_server = http_server::HTTPServer::new(
+		settings.clone(),
+		storage_db.clone(),
+		program_state.clone(),
+		form_tokens.clone(),
+	);
+
+	let https_server = settings.https.as_ref().map(|_| {
+		https_server::HTTPSServer::new(
 			settings.clone(),
 			storage_db.clone(),
 			program_state.clone(),
 			form_tokens.clone(),
 		)
-		.unwrap(),
-	);
+	});
 
-	thread_handles.push(
-		http_server::run(
-			settings.clone(),
-			storage_db.clone(),
-			program_state.clone(),
-			form_tokens.clone(),
-		)
-		.unwrap(),
-	);
+	{
+		let template = std::fs::read_to_string("assets/start.html")
+			.unwrap_or_else(|_| String::from(include_str!("assets/start.html")));
 
-	if settings.https.is_some() {
-		match https_server::run(settings, storage_db, program_state, form_tokens) {
+		let mut output = vec![];
+		let mut rewriter = lol_html::HtmlRewriter::new(
+			lol_html::Settings {
+				element_content_handlers: vec![lol_html::element!("template_remove", |el| {
+					el.remove();
+
+					Ok(())
+				})],
+				..lol_html::Settings::default()
+			},
+			|c: &[u8]| output.extend_from_slice(c),
+		);
+		rewriter.write(template.as_bytes()).unwrap();
+		rewriter.end().unwrap();
+		let template = String::from_utf8(output).unwrap();
+
+		let mut engine = tera::Tera::default();
+		engine.add_raw_template("start.html", &template).unwrap();
+
+		#[derive(serde::Serialize)]
+		struct HelpContext {
+			app_name: String,
+			app_version: String,
+			admin_addr: String,
+			data_path: std::path::PathBuf,
+			http_server: String,
+			https_server: Option<String>,
+		}
+
+		let context = HelpContext {
+			app_name: env!("CARGO_PKG_NAME").into(),
+			app_version: env!("CARGO_PKG_VERSION").into(),
+			admin_addr: admin_ui.get_addr(),
+			data_path: storage_db.lock().await.get_engine().get_root_path(),
+			http_server: http_server.get_addr(),
+			https_server: https_server.as_ref().map(|server| server.get_addr()),
+		};
+
+		let local_help_content = engine
+			.render(
+				"start.html",
+				&tera::Context::from_serialize(context).unwrap(),
+			)
+			.unwrap();
+
+		let file_path = std::path::PathBuf::from(format!("{}-start.html", env!("CARGO_PKG_NAME")));
+
+		std::fs::write(&file_path, local_help_content).ok();
+
+		println!(
+			"🚸 starting page : {}",
+			if let Ok(path) = dunce::canonicalize(&file_path) {
+				format!("{}", path.display())
+			} else {
+				format!("{}", file_path.display())
+			}
+		);
+	}
+
+	thread_handles.push(admin_ui.run().unwrap());
+
+	thread_handles.push(http_server.run().unwrap());
+
+	if let Some(server) = https_server {
+		match server.run() {
 			Ok(https_handle) => {
 				thread_handles.push(https_handle);
 			}
@@ -466,7 +536,7 @@ async fn get_oauth(
 	let username = path_payloads.into_inner();
 
 	// TODO : do not panic if input data is incorrect (especially scopes)
-	let scopes = pct_str::PctString::new(&query.scope)
+	let scopes = pct_str::PctString::new(query.scope.clone())
 		.unwrap()
 		.decode()
 		.split(' ')
@@ -536,13 +606,16 @@ async fn get_oauth(
 	let context = OauthContext {
 		app_name: env!("CARGO_PKG_NAME").into(),
 		app_version: env!("CARGO_PKG_VERSION").into(),
-		username: pct_str::PctString::new(&username)
+		username: pct_str::PctString::new(username.clone())
 			.unwrap()
 			.decode()
 			.chars()
 			.collect(),
 		uri_encoded_username: pct_str::PctString::encode(
-			pct_str::PctString::new(&username).unwrap().decode().chars(),
+			pct_str::PctString::new(username.clone())
+				.unwrap()
+				.decode()
+				.chars(),
 			pct_str::URIReserved,
 		)
 		.to_string(),
@@ -564,7 +637,7 @@ async fn get_oauth(
 		form_token: new_form_token,
 		client: query.client_id.clone(),
 		redirect_uri: pct_str::PctString::encode(
-			pct_str::PctString::new(&query.redirect_uri)
+			pct_str::PctString::new(query.redirect_uri.clone())
 				.unwrap()
 				.decode()
 				.chars(),
@@ -613,7 +686,10 @@ async fn post_oauth(
 
 	match origin {
 		Some(origin) => {
-			let form_token = pct_str::PctString::new(&form.form_token).unwrap().decode();
+			let decoded = pct_str::PctString::new(form.form_token.clone())
+				.unwrap()
+				.decode();
+			let form_token = decoded.chars().as_str();
 
 			let form_token_found = form_tokens.lock().unwrap().iter_mut().any(|token| {
 				token.usage == FormTokenUsage::Oauth
@@ -647,16 +723,22 @@ async fn post_oauth(
 						let token = storage_db.lock().await.generate_token(
 							form.username.clone(),
 							&mut password,
-							pct_str::PctString::new(&form.scopes).unwrap().decode(),
+							pct_str::PctString::new(form.scopes.clone())
+								.unwrap()
+								.decode()
+								.chars()
+								.as_str(),
 						);
 
 						match token {
 							Ok(new_token) => {
 								let new_path = format!(
 									"{}#access_token={}&token_type={}",
-									pct_str::PctString::new(&form.redirect_uri)
+									pct_str::PctString::new(form.redirect_uri.clone())
 										.unwrap()
-										.decode(),
+										.decode()
+										.chars()
+										.as_str(),
 									pct_str::PctString::encode(
 										new_token.0.chars(),
 										pct_str::URIReserved
@@ -681,11 +763,7 @@ async fn post_oauth(
 									form.username,
 									pct_str::PctString::encode(
 										pct_str::PctString::new(
-											&form.redirect_uri
-										)
-											.unwrap()
-											.decode()
-											.chars(),
+											form.redirect_uri.clone()).unwrap().decode().chars(),
 										pct_str::URIReserved
 									),
 									form.scopes,
@@ -712,8 +790,8 @@ async fn post_oauth(
 							form.username,
 							pct_str::PctString::encode(
 								pct_str::PctString::new(
-									&form.redirect_uri
-								)
+									form.redirect_uri.clone(
+								))
 									.unwrap()
 									.decode()
 									.chars(),
@@ -739,11 +817,8 @@ async fn post_oauth(
 						form.username,
 						pct_str::PctString::encode(
 							pct_str::PctString::new(
-								&form.redirect_uri
-							)
-								.unwrap()
-								.decode()
-								.chars(),
+								form.redirect_uri.clone(
+							)).unwrap().decode().chars(),
 							pct_str::URIReserved
 						),
 						form.scopes,
@@ -765,7 +840,7 @@ async fn post_oauth(
 					"{}?redirect_uri={}&scope={}&client_id={}&response_type={}&auth_result={}",
 					form.username,
 					pct_str::PctString::encode(
-						pct_str::PctString::new(&form.redirect_uri)
+						pct_str::PctString::new(form.redirect_uri.clone())
 							.unwrap()
 							.decode()
 							.chars(),
@@ -791,7 +866,7 @@ async fn post_oauth(
 				"{}?redirect_uri={}&scope={}&client_id={}&response_type={}&auth_result={}",
 				form.username,
 				pct_str::PctString::encode(
-					pct_str::PctString::new(&form.redirect_uri)
+					pct_str::PctString::new(form.redirect_uri.clone())
 						.unwrap()
 						.decode()
 						.chars(),

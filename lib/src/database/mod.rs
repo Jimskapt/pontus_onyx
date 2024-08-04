@@ -237,6 +237,9 @@ impl<E: Engine> Database<E> {
 	pub fn register_listener(&mut self, listener: Box<dyn crate::Listener + Send>) {
 		self.listeners.push(listener);
 	}
+	pub fn get_engine(&self) -> &E {
+		&self.engine
+	}
 }
 
 impl<E: Engine> Database<E> {
@@ -293,7 +296,9 @@ impl<E: Engine> Database<E> {
 						for limit in &request.limits {
 							match limit {
 								crate::Limit::IfMatch(if_match_etag) => {
-									if get_document_etag != *if_match_etag {
+									if get_document_etag != *if_match_etag
+										&& *if_match_etag != crate::item::Etag::from("*")
+									{
 										return Response {
 											request,
 											status: ResponseStatus::NoIfMatch(get_document_etag),

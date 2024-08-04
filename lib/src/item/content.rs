@@ -13,6 +13,14 @@ impl<T: AsRef<[u8]>> From<T> for Content {
 	}
 }
 
+impl TryInto<String> for Content {
+	type Error = std::string::FromUtf8Error;
+
+	fn try_into(self) -> Result<std::string::String, Self::Error> {
+		std::string::String::from_utf8(self.0)
+	}
+}
+
 static BYTES_TO_DEBUG: usize = 3;
 impl std::fmt::Debug for Content {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {

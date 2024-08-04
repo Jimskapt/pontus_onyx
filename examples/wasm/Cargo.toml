@@ -1,0 +1,46 @@
+[package]
+name = "wasm_example"
+version = "1.0.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["console_error_panic_hook"]
+
+[dependencies]
+pontus_onyx = { path = "../../lib" }
+pontus_onyx_engine_localstorage = { path = "../../engine_localstorage" }
+
+serde = { version = "1.0.204", features = ["serde_derive"] }
+serde_json = "1.0.122"
+
+serde-wasm-bindgen = "0.6.5"
+wasm-bindgen = "0.2.92"
+wasm-bindgen-futures = "0.4.42"
+web-sys = { version = "0.3.69", features = [
+    'Document',
+    'Element',
+    'HtmlElement',
+    'HtmlInputElement',
+    'HtmlSelectElement',
+    'Node',
+    'Window',
+] }
+
+# The `console_error_panic_hook` crate provides better debugging of panics by
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+console_error_panic_hook = { version = "0.1.7", optional = true }
+getrandom = { version = "0.2.15", features = ["js"] }
+tokio = { version = "1.39.2", features = ["sync"] }
+time = { version = "0.3.36", features = ["wasm-bindgen", "local-offset"] }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.42"
+
+[profile.release]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
